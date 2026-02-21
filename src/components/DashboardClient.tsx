@@ -20,16 +20,22 @@ export type DashboardCard = {
 
 export function DashboardClient({
   cards: initialCards,
+  allCards = null,
   isAdmin,
   showAllClassesBanner = false,
 }: {
   cards: DashboardCard[]
+  allCards?: DashboardCard[] | null
   isAdmin: boolean
   showAllClassesBanner?: boolean
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [localHeadcounts, setLocalHeadcounts] = useState<Record<string, number>>({})
   const [toast, setToast] = useState<string | null>(null)
+  const [showAllClasses, setShowAllClasses] = useState(
+    initialCards.length === 0 && (allCards?.length ?? 0) > 0
+  )
+  const cardsToShow = showAllClasses && allCards && allCards.length > 0 ? allCards : initialCards
 
   useEffect(() => {
     if (!toast) return
@@ -75,7 +81,7 @@ export function DashboardClient({
       )}
 
       <div className="flex flex-col gap-4">
-        {initialCards.map((card) => (
+        {cardsToShow.map((card) => (
           <ClassCard
             key={card.occurrenceId}
             occurrenceId={card.occurrenceId}
@@ -95,6 +101,15 @@ export function DashboardClient({
             localHeadcount={localHeadcounts[card.occurrenceId]}
           />
         ))}
+        {allCards && allCards.length > initialCards.length && (
+          <button
+            type="button"
+            onClick={() => setShowAllClasses((prev) => !prev)}
+            className="rounded-2xl border-2 border-dashed border-gray-300 bg-white p-5 text-center font-medium text-gray-700 shadow-sm hover:border-gray-400 hover:bg-gray-50"
+          >
+            {showAllClasses ? 'Show my classes only' : 'See all classes today'}
+          </button>
+        )}
       </div>
     </>
   )

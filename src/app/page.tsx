@@ -29,6 +29,7 @@ export default async function DashboardPage() {
     canEdit: boolean
     showOverride: boolean
   }> = []
+  let allCardsWhenFiltered: typeof cards | null = null
   let loadError: string | null = null
   let todayDate = getTodayLocalDate()
   let todayWeekday = getTodayWeekday()
@@ -58,18 +59,13 @@ export default async function DashboardPage() {
     if (templatesError) {
       loadError = templatesError.message
     } else if (templates && templates.length > 0) {
-      let filtered = templates as Array<{ id: string; program: string; title: string; start_time: string; location?: string; capacity?: number }>
-
-      // Only filter by coached_programs when coach has at least one program selected
-      const coachedPrograms = profile?.coached_programs ?? []
-      const hasProgramFilter =
-        profile?.role === 'coach' &&
-        Array.isArray(coachedPrograms) &&
-        coachedPrograms.length > 0
-      if (hasProgramFilter) {
-        const set = new Set(coachedPrograms)
-        filtered = filtered.filter((t) => set.has(t.program))
-      }
+      const templatesList = templates as Array<{ id: string; program: string; title: string; start_time: string; location?: string; capacity?: number }>
+      const coachedPrograms = Array.isArray(profile?.coached_programs) ? profile!.coached_programs as string[] : []
+      const isCoachOrHeadCoach = profile?.role === 'coach' || profile?.role === 'head_coach'
+      const hasProgramFilter = isCoachOrHeadCoach && coachedPrograms.length > 0
+      const filtered = hasProgramFilter
+        ? templatesList.filter((t) => new Set(coachedPrograms).has(t.program))
+        : templatesList
 
       const isAdmin = profile?.role === 'admin'
 
@@ -113,6 +109,40 @@ export default async function DashboardPage() {
           showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
         })
       }
+
+      // When coach/head_coach has programs selected, build full list for "See all classes today"
+      if (hasProgramFilter && templatesList.length > 0) {
+        allCardsWhenFiltered = []
+        for (const template of templatesList) {
+          const { data: occ, error: occError } = await getOrCreateOccurrence(
+            template.id,
+            todayDate,
+            template.start_time
+          )
+          if (occError || !occ?.id || !occ.starts_at) continue
+          const editState = canEditAttendance(isAdmin, occ.starts_at)
+          const { data: log } = await supabase
+            .from('attendance_logs')
+            .select('headcount')
+            .eq('class_occurrence_id', occ.id)
+            .single()
+          const startTime = String(template.start_time)
+          const timeStr = startTime.length >= 5 ? `${startTime.slice(0, 5)}` : startTime
+          allCardsWhenFiltered.push({
+            occurrenceId: occ.id,
+            startsAt: occ.starts_at,
+            programLabel: getProgramLabel(template.program),
+            title: template.title,
+            time: timeStr,
+            location: template.location,
+            capacity: template.capacity,
+            headcount: log?.headcount,
+            locked: editState.locked,
+            canEdit: editState.allowed,
+            showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
+          })
+        }
+      }
     }
   } catch (err) {
     loadError = err instanceof Error ? err.message : 'Failed to load dashboard'
@@ -151,7 +181,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {cards.length === 0 ? (
+      {cards.length === 0 && (!allCardsWhenFiltered || allCardsWhenFiltered.length === 0) ? (
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200 text-center">
           <p className="text-lg font-medium text-gray-700">Engir tímar í dag</p>
           <p className="mt-2 text-sm text-gray-500">
@@ -162,7 +192,7 @@ export default async function DashboardPage() {
               Stillingar → Vikudagatal til að setja inn tíma (eða synca frá Google Sheets).
             </p>
           )}
-          {profile?.role === 'coach' && (
+          {(profile?.role === 'coach' || profile?.role === 'head_coach') && (
             <a
               href="/profile"
               className="mt-4 inline-block min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 text-white font-medium text-base"
@@ -174,9 +204,10 @@ export default async function DashboardPage() {
       ) : (
         <DashboardClient
           cards={cards}
+          allCards={allCardsWhenFiltered}
           isAdmin={profile?.role === 'admin'}
           showAllClassesBanner={
-            profile?.role === 'coach' &&
+            (profile?.role === 'coach' || profile?.role === 'head_coach') &&
             (!Array.isArray(profile?.coached_programs) || profile.coached_programs.length === 0)
           }
         />
