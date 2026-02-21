@@ -42,7 +42,7 @@ export function CoachManagementClient({ initialCoaches }: { initialCoaches: Coac
     setLoadingId(email)
     const out = await generateResetPasswordLink(email)
     setLoadingId(null)
-    if (out.error) {
+    if ('error' in out) {
       showToast(out.error)
       return
     }
