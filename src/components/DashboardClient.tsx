@@ -73,32 +73,34 @@ export function DashboardClient({
         </div>
       )}
 
-      {/* Day navigator */}
-      <div className="flex items-center justify-between gap-2 mb-4 py-2 px-1">
+      {/* Day navigator — single pill */}
+      <div className="flex items-center justify-between rounded-full bg-[#F0F2F5] px-5 py-3 mb-4 min-h-[48px]">
         <Link
           href={`/?date=${addDaysToLocalDate(selectedLocalDate, -1)}`}
-          className="min-h-[44px] px-4 rounded-xl border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] -m-1 rounded-full text-[#888] hover:text-gray-700 hover:bg-black/5 active:bg-black/10"
+          aria-label="Previous day"
         >
-          ◀ Prev
+          <span className="text-xl leading-none">←</span>
         </Link>
-        <div className="flex flex-col items-center gap-0.5">
+        {isToday ? (
+          <span className="flex-1 flex items-center justify-center min-h-[44px] font-semibold text-gray-900">
+            í dag
+          </span>
+        ) : (
           <Link
-            href={isToday ? '/' : `/?date=${todayLocalDate}`}
-            className={`min-h-[44px] px-4 rounded-xl font-medium ${
-              isToday
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            href={`/?date=${todayLocalDate}`}
+            className="flex-1 flex items-center justify-center min-h-[44px] font-semibold text-gray-900 hover:opacity-80"
+            aria-label="Go to today"
           >
-            Today
+            {formatLocalDateLabel(selectedLocalDate)}
           </Link>
-          <span className="text-sm text-gray-600">{formatLocalDateLabel(selectedLocalDate)}</span>
-        </div>
+        )}
         <Link
           href={`/?date=${addDaysToLocalDate(selectedLocalDate, 1)}`}
-          className="min-h-[44px] px-4 rounded-xl border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] -m-1 rounded-full text-[#888] hover:text-gray-700 hover:bg-black/5 active:bg-black/10"
+          aria-label="Next day"
         >
-          Next ▶
+          <span className="text-xl leading-none">→</span>
         </Link>
       </div>
 
