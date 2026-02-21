@@ -43,11 +43,11 @@ export function EditProgramSection({
       capacity: capacity === '' ? null : parseInt(capacity, 10),
     })
     setLoading(false)
-    if (result?.error) {
+    if (result && 'error' in result && result.error) {
       setError(result.error)
       return
     }
-    const count = 'updated' in result ? result.updated : 0
+    const count = result && 'updated' in result ? result.updated : 0
     setSuccess(`Updated ${count} class(es). You can still fine-tune each class in the table.`)
     setTimeout(() => {
       setOpen(false)
