@@ -24,3 +24,8 @@ body {
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
+
+/* Nav uses same background as body so no white band in dark mode on mobile */
+.app-nav {
+  background-color: var(--background);
+}
