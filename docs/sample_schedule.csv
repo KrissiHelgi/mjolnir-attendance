@@ -1,0 +1,11 @@
+program,title,weekday,start_time,duration_minutes,location,capacity
+bjj,Morning BJJ,Monday,06:00,60,Main Gym,20
+bjj,Evening BJJ,Monday,18:00,60,Main Gym,20
+mma,MMA Tuesday,Tuesday,07:00,60,Main Gym,20
+bjj,Morning BJJ,Wednesday,06:00,60,Main Gym,20
+kickbox,Kickbox,Wednesday,12:00,45,Studio B,20
+vikingathrek,Víkingaþrek,Wednesday,18:00,60,Main Gym,15
+box,Boxing,Thursday,19:00,60,Main Gym,20
+bjj,Morning BJJ,Friday,06:00,60,Main Gym,20
+vx,VX Friday,Friday,17:00,45,Main Gym,18
+bjj,Weekend BJJ,Saturday,09:00,60,Main Gym,20
