@@ -47,7 +47,6 @@ export function TemplateList({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Program</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Title</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Day/Time</th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Duration</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Capacity</th>
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
@@ -61,7 +60,6 @@ export function TemplateList({
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                   {WEEKDAYS[template.weekday]} {template.start_time}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.duration_minutes} min</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.location || '-'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.capacity ?? '-'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-2">
@@ -98,7 +96,6 @@ export function TemplateList({
                 title: editing.title,
                 weekday: editing.weekday,
                 start_time: editing.start_time,
-                duration_minutes: editing.duration_minutes,
                 location: editing.location,
                 capacity: editing.capacity,
               }}

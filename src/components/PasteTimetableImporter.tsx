@@ -31,7 +31,7 @@ export function PasteTimetableImporter() {
         setImportError(out.error)
         return
       }
-      setToast(`Imported ${out.imported} templates. ${out.excluded > 0 ? `(${out.excluded} excluded)` : ''}`)
+      setToast(`Imported ${out.imported} classes. ${out.excluded > 0 ? `(${out.excluded} excluded)` : ''}`)
       setTsv('')
       setPreview(null)
       router.refresh()
@@ -49,7 +49,7 @@ export function PasteTimetableImporter() {
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm border">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Paste timetable (TSV)</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Paste timetable</h2>
       <p className="text-sm text-gray-600 mb-3">
         Paste tab- or space-separated rows: <strong>Day, Time, Class name, Sport</strong>. Example: <code className="bg-gray-100 px-1">Mán	12:10	Nogi 201	BJJ</code>. Header row is optional.
       </p>

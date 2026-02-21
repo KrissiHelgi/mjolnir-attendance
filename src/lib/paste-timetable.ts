@@ -85,7 +85,6 @@ export type PasteTemplate = {
   title: string
   weekday: number
   start_time: string
-  duration_minutes: number
   location: null
   capacity: null
 }
@@ -150,7 +149,6 @@ export function parsePasteTimetable(tsv: string): PasteResult {
       title: className || 'Class',
       weekday,
       start_time,
-      duration_minutes: 60,
       location: null,
       capacity: null,
     })

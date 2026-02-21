@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { isValidProgramKey, normalizeProgramKey } from '@/lib/programs'
+import { isValidProgramKey } from '@/lib/programs'
 import { parsePasteTimetable } from '@/lib/paste-timetable'
 
 export type ClassTemplate = {
@@ -11,7 +11,6 @@ export type ClassTemplate = {
   title: string
   weekday: number
   start_time: string
-  duration_minutes: number
   location?: string
   capacity?: number
 }
@@ -41,7 +40,7 @@ export async function createTemplate(data: ClassTemplate) {
 
   const { error, data: template } = await supabase
     .from('class_templates')
-    .insert(data)
+    .insert({ program: data.program, title: data.title, weekday: data.weekday, start_time: data.start_time, location: data.location ?? null, capacity: data.capacity ?? null })
     .select()
     .single()
 
@@ -119,49 +118,6 @@ export async function deleteTemplate(id: string) {
   return { success: true }
 }
 
-export async function importTemplatesFromCSV(csvData: ClassTemplate[]) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Not authenticated' }
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
-    return { error: 'Unauthorized' }
-  }
-
-  const rows = csvData
-    .map((row) => {
-      const key = normalizeProgramKey(row.program)
-      if (!key) return null
-      return { ...row, program: key }
-    })
-    .filter((r): r is ClassTemplate => r !== null)
-
-  if (rows.length === 0) {
-    return { error: 'No valid rows: program must be a valid program key or label' }
-  }
-
-  const { error, data } = await supabase
-    .from('class_templates')
-    .insert(rows)
-    .select()
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  revalidatePath('/admin/schedule')
-  return { data, count: data?.length || 0 }
-}
-
 /** Parse pasted TSV and overwrite class_templates via sync_class_templates RPC. Admin only. */
 export async function importPasteTimetable(tsv: string): Promise<
   | { error: string }
@@ -183,9 +139,8 @@ export async function importPasteTimetable(tsv: string): Promise<
     title: t.title,
     weekday: t.weekday,
     start_time: t.start_time,
-    duration_minutes: t.duration_minutes,
-    location: t.location,
-    capacity: t.capacity,
+    location: t.location ?? undefined,
+    capacity: t.capacity ?? undefined,
   }))
 
   const { error } = await supabase.rpc('sync_class_templates', { p_templates: payload })
@@ -193,4 +148,18 @@ export async function importPasteTimetable(tsv: string): Promise<
   revalidatePath('/admin/schedule')
   revalidatePath('/')
   return { imported: result.included.length, excluded: result.excluded.length }
+}
+
+/** Clear entire weekly schedule (delete all class_templates). Admin only. */
+export async function clearSchedule(): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { error: 'Unauthorized' }
+  const { error } = await supabase.rpc('sync_class_templates', { p_templates: [] })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/schedule')
+  revalidatePath('/')
+  return {}
 }

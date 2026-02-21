@@ -1,12 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/helpers'
 import { redirect } from 'next/navigation'
-import { createTemplate, updateTemplate, deleteTemplate, importTemplatesFromCSV, type ClassTemplate } from '@/lib/actions/schedule'
-import { ScheduleForm } from '@/components/ScheduleForm'
-import { TemplateList } from '@/components/TemplateList'
-import { CSVImport } from '@/components/CSVImport'
-import { GoogleSheetsSync } from '@/components/GoogleSheetsSync'
+import { deleteTemplate, clearSchedule, type ClassTemplate } from '@/lib/actions/schedule'
 import { PasteTimetableImporter } from '@/components/PasteTimetableImporter'
+import { WeeklyScheduleTable } from '@/components/WeeklyScheduleTable'
+import { ClearScheduleButton } from '@/components/ClearScheduleButton'
 
 export default async function AdminSchedulePage() {
   const profile = await getCurrentProfile()
@@ -16,9 +14,9 @@ export default async function AdminSchedulePage() {
   }
 
   const supabase = await createClient()
-  const { data: templates, error } = await supabase
+  const { data: classes, error } = await supabase
     .from('class_templates')
-    .select('*')
+    .select('id, program, title, weekday, start_time, location, capacity')
     .order('weekday', { ascending: true })
     .order('start_time', { ascending: true })
 
@@ -35,27 +33,22 @@ export default async function AdminSchedulePage() {
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Weekly timetable</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage the base weekly schedule. Today’s classes are derived from this.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Weekly schedule</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage the base weekly schedule. Today’s classes are derived from this. Use <strong>Paste timetable</strong> to overwrite the schedule.
+        </p>
       </div>
 
       <div className="space-y-6">
-        <GoogleSheetsSync />
         <PasteTimetableImporter />
 
         <div className="rounded-lg bg-white p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Create template</h2>
-          <ScheduleForm createAction={createTemplate} />
-        </div>
-
-        <div className="rounded-lg bg-white p-6 shadow-sm border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Templates</h2>
-            <CSVImport importAction={importTemplatesFromCSV} />
+            <h2 className="text-lg font-semibold text-gray-900">Classes</h2>
+            <ClearScheduleButton clearAction={clearSchedule} hasRows={(classes?.length ?? 0) > 0} />
           </div>
-          <TemplateList
-            templates={templates ?? []}
-            updateAction={updateTemplate}
+          <WeeklyScheduleTable
+            classes={(classes ?? []) as (ClassTemplate & { id: string })[]}
             deleteAction={deleteTemplate}
           />
         </div>

@@ -39,14 +39,14 @@ Set in `.env.local`:
 In Supabase SQL Editor, run **`supabase/schema.sql`** to create:
 
 - **profiles** — `id`, `full_name`, `role` (admin/coach), `coached_programs` (text[])
-- **class_templates** — Weekly schedule: `program`, `title`, `weekday`, `start_time`, `duration_minutes`, `location`, `capacity`
+- **class_templates** — Weekly schedule: `program`, `title`, `weekday`, `start_time`, `location`, `capacity` (no duration)
 - **class_occurrences** — One per (template, local_date); created on demand when viewing today
 - **attendance_logs** — One per occurrence: `class_occurrence_id`, `headcount`, `created_by`, `created_at`, `updated_at`, `locked` (optional)
 
 **Attendance lock (1 hour after class start)**  
 Coaches can log or edit headcount only until **1 hour after the class start time** (UTC). After that, the record is locked; only **admins** can edit (with an explicit “Override” confirmation). Lock is enforced in server logic only (not in RLS). See `src/lib/attendance-lock.ts` and `src/lib/actions/attendance.ts`.
 
-**Existing project?** Run migrations in order: **`supabase/migrations/20260221_occurrences_and_coached_programs.sql`** (and any later ones). For analytics thresholds and optional default coach, run **`20260224_...`** and **`20260225_...`**. For Google Sheets schedule sync, run **`20260226_app_settings_and_sync.sql`** (adds `app_settings` and `sync_class_templates` RPC).
+**Existing project?** Run migrations in order (e.g. **`supabase/migrations/`**). Latest: **`20260233_drop_duration_and_simplify_sync.sql`** drops `duration_minutes` from `class_templates` and updates `sync_class_templates` RPC. Schedule setup is **paste-only** (no Google Sheets).
 
 ### 3. First admin
 
@@ -66,7 +66,7 @@ Open [http://localhost:3000](http://localhost:3000). Log in → Dashboard shows 
 
 ### Minimal flow
 
-1. **Admin:** Add templates at **Schedule** (`/admin/schedule`) — program, title, weekday, start time, duration, optional location/capacity. Or **paste timetable (TSV)** or import CSV (see `docs/sample_schedule.csv`).
+1. **Admin:** Set up the weekly schedule at **Schedule** (`/admin/schedule`) by **pasting a timetable** (TSV: Day, Time, Class name, Sport). Optional location/capacity come from the paste or can be edited later. No duration field.
 2. **Coach:** Open **Profile** (`/profile`), tick the programs you coach, Save.
 3. **Dashboard:** Shows today’s classes (for coaches: only programs they coach). Tap a class → enter headcount → Log attendance.
 
@@ -75,7 +75,7 @@ Open [http://localhost:3000](http://localhost:3000). Log in → Dashboard shows 
 - `/` — Dashboard (today’s classes; get-or-create occurrences; log headcount)
 - `/profile` — Coaches: toggle programs they coach
 - `/login` — Email/password sign-in
-- `/admin/schedule` — Admin: CRUD templates, paste timetable (TSV), CSV import, Google Sheets sync
+- `/admin/schedule` — Admin: paste timetable (TSV) to overwrite weekly schedule; view/delete classes
 - `/admin/analytics` — Admin Analytics: date range, attendance per slot, avg by program, coach performance, capacity utilization, low-attendance alerts, CSV export (see below)
 - `/admin/bootstrap` — Dev-only: make current user admin
 
@@ -108,34 +108,9 @@ Admins can view attendance analytics for a configurable date range (default: las
 - **Alerts** — Low-attendance alerts using per-program thresholds; list of occurrences below threshold; “slots with repeated low attendance”; and **missing logs** (past occurrences with no attendance log).
 - **Export** — CSV download: (1) attendance logs (date, time, program, title, location, capacity, headcount, logged_by, logged_at); (2) slot summary (template_id, weekday, time, program, avg headcount, avg utilization, occurrence count).
 
-### Google Sheets sync (schedule)
+### Schedule setup (paste timetable only)
 
-Admins can sync **class_templates** from a **public** Google Sheet via its CSV export URL.
-
-**Set up the Sheet:**
-1. Create a sheet with columns: **Time**, **Class name**, **Sport**. (Any "Link" column is ignored.)
-2. **Sharing:** Click Share → set to **"Anyone with the link"** → **Viewer**. If the sheet is not public, the app will show: *"Set sharing to Anyone with the link: Viewer"*.
-3. **Export URL:** Use the CSV export link:  
-   `https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/export?format=csv&gid=<TAB_ID>`  
-   Replace `<SPREADSHEET_ID>` with your sheet ID (from the sheet’s URL). Replace `<TAB_ID>` with the **gid** of the tab you want to sync (see below).
-4. **Find gid:** Open the sheet in a browser; the tab’s **gid** is in the URL when you select that tab (e.g. `...edit#gid=0`). Default is often `gid=0` for the first tab. Paste the full export URL into **Admin → Schedule → Google Sheets Sync** and save.
-
-**Required columns:**
-- **Time** — Weekday + time, e.g. `Mán 12:10` (Icelandic day prefixes: Sun, Mán, Þri, Mið, Fim, Fös, Lau).
-- **Class name** — Title of the class (used as `title`).
-- **Sport** — Mapped to a program key (e.g. "BJJ", "Víkingaþrek, Líkamsrækt"). Comma-separated values are supported; the first matching program is used.
-
-**Exclusions (rows not imported):**
-- **Sport** contains *"Barna og unglingastarf"* (kids/teens).
-- **Blank rows.**
-- **Time** does not match the weekday+time pattern (e.g. `Mán 12:10`).
-- **Unknown sport** — Sport does not match any known program (BJJ, MMA, Box, Kickbox, Víkingaþrek, VX, V6, Sjálfsvörn, Heljardætur, Mömmuþrek).
-
-**Flow:** Save the CSV URL → **Preview import** (see included/excluded counts and first 20 rows) → **Sync now (overwrite)** to replace all templates with the imported rows (transactional: delete all, then insert).
-
-### Paste timetable (TSV)
-
-On **Admin → Schedule**, the **Paste timetable (TSV)** section lets you paste a plain-text timetable and overwrite the weekly schedule in one go.
+On **Admin → Schedule**, the **Paste timetable** section is the only way to load the weekly schedule. Paste a plain-text timetable and overwrite the schedule in one go.
 
 **Format:** Tab- or space-separated columns: **Day**, **Time**, **Class name**, **Sport**. Example row:
 ```
@@ -156,7 +131,7 @@ You may include an optional header row (e.g. `Day	Time	Class name	Sport`); it is
 **Supported sports (program keys):**  
 BJJ (bjj), MMA (mma), Box (box), Kickbox (kickbox), Víkingaþrek (vikingathrek), VX (vx), V6 semi-privates (v6_semi_privates), Sjálfsvörn (sjalfsvorn), Heljardætur (heljardaetur), Mömmuþrek (mommuthrek). Mapping is by substring (case-insensitive; kickbox is matched before box). Yoga, Ólympískar Lyftingar, Hlaup og Hjól, and generic “Líkamsrækt” are **not** supported unless they match one of the keys above.
 
-**Flow:** Paste text → **Preview** (see total/included/excluded and first 30 included rows) → **Import (Overwrite schedule)** to replace all class_templates. Success toast shows imported and excluded counts.
+**Flow:** Paste text → **Preview** (see total/included/excluded and first 30 included rows) → **Import (Overwrite schedule)** to replace all classes. You can **Clear schedule** to remove all classes, or delete a single class from the table. Success toast shows imported and excluded counts.
 
 ### Per-program thresholds (low-attendance alerts)
 

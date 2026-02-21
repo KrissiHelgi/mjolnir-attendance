@@ -22,7 +22,7 @@ export function ScheduleForm({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const isEdit = Boolean(templateId && updateAction)
-  const label = submitLabel ?? (isEdit ? 'Save changes' : 'Create Template')
+  const label = submitLabel ?? (isEdit ? 'Save changes' : 'Add class')
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -33,7 +33,6 @@ export function ScheduleForm({
       title: formData.get('title') as string,
       weekday: parseInt(formData.get('weekday') as string),
       start_time: formData.get('start_time') as string,
-      duration_minutes: parseInt(formData.get('duration_minutes') as string),
       location: (formData.get('location') as string) || undefined,
       capacity: formData.get('capacity') ? parseInt(formData.get('capacity') as string) : undefined,
     }
@@ -126,21 +125,6 @@ export function ScheduleForm({
             name="start_time"
             required
             defaultValue={initialData?.start_time}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="duration_minutes" className="block text-sm font-medium text-gray-700">
-            Duration (minutes) *
-          </label>
-          <input
-            type="number"
-            id="duration_minutes"
-            name="duration_minutes"
-            min="1"
-            required
-            defaultValue={initialData?.duration_minutes}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
           />
         </div>
