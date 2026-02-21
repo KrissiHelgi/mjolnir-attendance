@@ -16,7 +16,12 @@ export async function getCoachesForManagement(): Promise<
   { error: string } | { data: CoachRow[] }
 > {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
-  const supabase = createServiceRoleClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch (e) {
+    return { error: 'Missing SUPABASE_SERVICE_ROLE_KEY. Add it in Vercel (and .env.local) for Coach management.' }
+  }
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name, role')
@@ -43,7 +48,12 @@ export async function updateCoachRole(
   role: 'coach' | 'head_coach'
 ): Promise<{ error?: string }> {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
-  const supabase = createServiceRoleClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch {
+    return { error: 'Missing SUPABASE_SERVICE_ROLE_KEY.' }
+  }
   const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
   if (error) return { error: error.message }
   return {}
@@ -54,7 +64,12 @@ export async function generateResetPasswordLink(
   email: string
 ): Promise<{ error: string } | { link: string }> {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
-  const supabase = createServiceRoleClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch {
+    return { error: 'Missing SUPABASE_SERVICE_ROLE_KEY.' }
+  }
   const { data, error } = await supabase.auth.admin.generateLink({
     type: 'recovery',
     email: email.trim(),
@@ -68,7 +83,12 @@ export async function generateResetPasswordLink(
 /** Remove coach: delete auth user (cascade deletes profile). Super-admin only. */
 export async function removeCoach(userId: string): Promise<{ error?: string }> {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
-  const supabase = createServiceRoleClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch {
+    return { error: 'Missing SUPABASE_SERVICE_ROLE_KEY.' }
+  }
   const { error } = await supabase.auth.admin.deleteUser(userId)
   if (error) return { error: error.message }
   return {}
