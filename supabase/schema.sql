@@ -36,6 +36,17 @@ create table public.app_settings (
   updated_at timestamptz default now() not null
 );
 
+-- Access requests: coaches request access; super admin approves/denies in Coach management
+create table public.access_requests (
+  id uuid default gen_random_uuid() primary key,
+  email text not null,
+  full_name text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),
+  created_at timestamptz default now() not null,
+  decided_at timestamptz,
+  decided_by uuid references auth.users(id) on delete set null
+);
+
 -- Per-program low-attendance thresholds (admin-configurable)
 create table public.program_thresholds (
   program text primary key,
@@ -72,6 +83,7 @@ alter table public.class_occurrences enable row level security;
 alter table public.attendance_logs enable row level security;
 alter table public.program_thresholds enable row level security;
 alter table public.app_settings enable row level security;
+alter table public.access_requests enable row level security;
 
 -- SECURITY DEFINER helpers (bypass RLS, avoid recursion)
 create or replace function public.is_admin()
@@ -147,6 +159,13 @@ create policy "Admins can insert app_settings"
   on public.app_settings for insert with check (public.is_admin());
 create policy "Admins can update app_settings"
   on public.app_settings for update using (public.is_admin());
+
+create policy "Anyone can submit access request"
+  on public.access_requests for insert with check (true);
+create policy "Authenticated can read access_requests"
+  on public.access_requests for select to authenticated using (true);
+create policy "Authenticated can update access_requests"
+  on public.access_requests for update to authenticated using (true) with check (true);
 
 -- Class occurrences: authenticated read/insert (for get-or-create on dashboard)
 create policy "Authenticated users can read occurrences"

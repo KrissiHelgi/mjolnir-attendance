@@ -69,6 +69,9 @@ export default async function LoginPage() {
               Sign in
             </button>
           </div>
+          <p className="text-center text-sm text-gray-500">
+            Need access? <a href="/request-access" className="text-blue-600 hover:underline">Request coach access</a>
+          </p>
         </form>
       </div>
     </div>
