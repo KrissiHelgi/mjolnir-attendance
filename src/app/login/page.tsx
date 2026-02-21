@@ -1,5 +1,6 @@
 import { signIn } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {
@@ -69,10 +70,10 @@ export default async function LoginPage() {
               Sign in
             </button>
           </div>
-          <p className="text-center text-sm text-gray-500">
-            Need access? <a href="/request-access" className="text-blue-600 hover:underline">Request coach access</a>
-          </p>
         </form>
+        <p className="mt-4 text-center text-sm text-gray-500">
+          Need access? <Link href="/request-access" className="text-blue-600 hover:underline">Request coach access</Link>
+        </p>
       </div>
     </div>
   )
