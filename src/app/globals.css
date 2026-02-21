@@ -12,20 +12,10 @@
   --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Roboto Mono, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Light mode only - ignore system dark preference */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-}
-
-/* Nav uses same background as body so no white band in dark mode on mobile */
-.app-nav {
-  background-color: var(--background);
+  color-scheme: light;
 }

@@ -28,8 +28,11 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body className="antialiased font-sans">
+    <html lang="en" className="light" suppressHydrationWarning>
+      <head>
+        <meta name="color-scheme" content="light" />
+      </head>
+      <body className="antialiased font-sans bg-gray-50">
         {user && <PendingGuard role={profile?.role} />}
         {user && <Navigation />}
         <main className={user ? "max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" : ""}>
