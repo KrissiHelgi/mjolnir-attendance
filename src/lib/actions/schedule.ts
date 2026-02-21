@@ -133,7 +133,10 @@ export async function updateProgramDefaults(
 
   const updatePayload: { location?: string | null; capacity?: number | null } = {}
   if (data.location !== undefined) updatePayload.location = data.location === '' ? null : data.location
-  if (data.capacity !== undefined) updatePayload.capacity = data.capacity === null || data.capacity === '' || Number.isNaN(Number(data.capacity)) || Number(data.capacity) < 0 ? null : Number(data.capacity)
+  if (data.capacity !== undefined) {
+    const num = Number(data.capacity)
+    updatePayload.capacity = data.capacity === null || Number.isNaN(num) || num < 0 ? null : num
+  }
 
   if (Object.keys(updatePayload).length === 0) return { error: 'Nothing to update' }
 
