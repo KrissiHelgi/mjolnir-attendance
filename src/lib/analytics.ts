@@ -602,6 +602,76 @@ export async function getMissingLogs(range: DateRange): Promise<{
   return { data }
 }
 
+export type OverCapacityRow = {
+  date: string
+  time: string
+  program: string
+  programLabel: string
+  title: string
+  capacity: number
+  headcount: number
+  overBy: number
+}
+
+/** Logs where headcount > capacity (capacity must be set). Within date range. */
+export async function getOverCapacityLogs(range: DateRange): Promise<{
+  error?: string
+  data?: OverCapacityRow[]
+}> {
+  const supabase = await createClient()
+
+  const { data: occs, error: occError } = await supabase
+    .from('class_occurrences')
+    .select(`
+      id,
+      local_date,
+      starts_at,
+      class_templates!inner(program, title, start_time, capacity)
+    `)
+    .gte('local_date', range.startDate)
+    .lte('local_date', range.endDate)
+
+  if (occError) return { error: occError.message }
+  if (!occs?.length) return { data: [] }
+
+  const occIds = occs.map((o: { id: string }) => o.id)
+  const { data: logs } = await supabase
+    .from('attendance_logs')
+    .select('class_occurrence_id, headcount')
+    .in('class_occurrence_id', occIds)
+
+  const logByOcc = new Map<string, number>()
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+    logByOcc.set(l.class_occurrence_id, l.headcount)
+  })
+
+  type OccRow = {
+    id: string
+    local_date: string
+    starts_at: string
+    class_templates: { program: string; title: string; start_time: string; capacity: number | null } | { program: string; title: string; start_time: string; capacity: number | null }[]
+  }
+  const data: OverCapacityRow[] = []
+  ;(occs as OccRow[]).forEach((o) => {
+    const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
+    if (!t || t.capacity == null) return
+    const headcount = logByOcc.get(o.id)
+    if (headcount == null || headcount <= t.capacity) return
+    data.push({
+      date: o.local_date,
+      time: String(t.start_time ?? '').slice(0, 5),
+      program: t.program ?? '',
+      programLabel: getProgramLabel(t.program ?? ''),
+      title: t.title ?? '',
+      capacity: t.capacity,
+      headcount,
+      overBy: headcount - t.capacity,
+    })
+  })
+  data.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+  return { data }
+}
+
 /** Count of missing logs in range (for admin banner). */
 export async function getMissingLogsCount(range: DateRange): Promise<{ error?: string; count?: number }> {
   const r = await getMissingLogs(range)

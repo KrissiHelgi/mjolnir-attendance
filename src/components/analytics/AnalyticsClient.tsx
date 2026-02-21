@@ -19,6 +19,7 @@ import {
   fetchCapacityUtilizationBySlot,
   fetchLowAttendanceAlerts,
   fetchMissingLogs,
+  fetchOverCapacityLogs,
   getSlotOptions,
   exportAttendanceLogsCSV,
   exportSlotSummaryCSV,
@@ -69,6 +70,7 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [alerts, setAlerts] = useState<Awaited<ReturnType<typeof fetchLowAttendanceAlerts>>['alerts'] | null>(null)
   const [slotsRepeated, setSlotsRepeated] = useState<Awaited<ReturnType<typeof fetchLowAttendanceAlerts>>['slotsWithRepeated'] | null>(null)
   const [missingLogs, setMissingLogs] = useState<Awaited<ReturnType<typeof fetchMissingLogs>>['data'] | null>(null)
+  const [overCapacity, setOverCapacity] = useState<Awaited<ReturnType<typeof fetchOverCapacityLogs>>['data'] | null>(null)
   const [alertsError, setAlertsError] = useState<string | null>(null)
 
   const programKeys = getProgramKeys()
@@ -134,6 +136,8 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     }
     const rMissing = await fetchMissingLogs(range)
     if (!rMissing.error) setMissingLogs(rMissing.data ?? null)
+    const rOver = await fetchOverCapacityLogs(range)
+    if (!rOver.error) setOverCapacity(rOver.data ?? null)
   }, [range.startDate, range.endDate])
 
   useEffect(() => {
@@ -248,6 +252,7 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
             alerts={alerts ?? null}
             slotsWithRepeated={slotsRepeated ?? null}
             missingLogs={missingLogs ?? null}
+            overCapacity={overCapacity ?? null}
             error={alertsError ?? undefined}
             onMissingMarked={loadAlerts}
           />

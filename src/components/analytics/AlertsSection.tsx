@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import type { LowAttendanceAlert, SlotLowCount } from '@/lib/analytics'
+import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow } from '@/lib/analytics'
 import type { MissingLog } from '@/lib/analytics'
 import type { ThresholdRow } from '@/lib/actions/analytics'
 import { getThresholds, updateThreshold, markMissingAsNa } from '@/lib/actions/analytics'
@@ -10,11 +10,12 @@ type Props = {
   alerts: LowAttendanceAlert[] | null
   slotsWithRepeated: SlotLowCount[] | null
   missingLogs?: MissingLog[] | null
+  overCapacity?: OverCapacityRow[] | null
   error?: string
   onMissingMarked?: () => void
 }
 
-export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, error, onMissingMarked }: Props) {
+export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapacity, error, onMissingMarked }: Props) {
   const [thresholds, setThresholds] = useState<ThresholdRow[] | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<number>(0)
@@ -255,6 +256,48 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, error, o
           </ul>
         )}
       </div>
+
+      {overCapacity != null && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">Classes exceeding capacity</h3>
+          <p className="text-xs text-gray-500 mb-2">Within selected date range. Headcount logged above the set capacity for that class.</p>
+          {!overCapacity.length ? (
+            <p className="text-gray-500 text-sm">None in range.</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-amber-800 mb-2">{overCapacity.length} class(es) over capacity</p>
+              <div className="overflow-x-auto max-h-72 overflow-y-auto border border-gray-200 rounded-lg">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="sticky top-0 bg-gray-50">
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 px-2 font-medium text-gray-700">Date</th>
+                      <th className="text-left py-2 px-2 font-medium text-gray-700">Time</th>
+                      <th className="text-left py-2 px-2 font-medium text-gray-700">Program</th>
+                      <th className="text-left py-2 px-2 font-medium text-gray-700">Title</th>
+                      <th className="text-right py-2 px-2 font-medium text-gray-700">Capacity</th>
+                      <th className="text-right py-2 px-2 font-medium text-gray-700">Headcount</th>
+                      <th className="text-right py-2 px-2 font-medium text-gray-700">Over by</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overCapacity.map((row, i) => (
+                      <tr key={i} className="border-b border-gray-100">
+                        <td className="py-2 px-2">{row.date}</td>
+                        <td className="py-2 px-2">{row.time}</td>
+                        <td className="py-2 px-2">{row.programLabel}</td>
+                        <td className="py-2 px-2 text-gray-600">{row.title}</td>
+                        <td className="text-right py-2 px-2">{row.capacity}</td>
+                        <td className="text-right py-2 px-2 font-semibold">{row.headcount}</td>
+                        <td className="text-right py-2 px-2 font-semibold text-amber-700">+{row.overBy}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {missingLogs != null && (
         <div id="alerts-missing">

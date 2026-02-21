@@ -13,6 +13,7 @@ import {
   getLowAttendanceAlerts,
   getMissingLogs,
   getMissingLogsCount,
+  getOverCapacityLogs,
   type DateRange,
 } from '@/lib/analytics'
 import { logAttendance } from '@/lib/actions/attendance'
@@ -326,6 +327,11 @@ export async function fetchLowAttendanceAlerts(range: DateRange) {
 export async function fetchMissingLogs(range: DateRange) {
   await requireAdmin()
   return getMissingLogs(range)
+}
+
+export async function fetchOverCapacityLogs(range: DateRange) {
+  await requireAdmin()
+  return getOverCapacityLogs(range)
 }
 
 export async function fetchMissingLogsCount(range: DateRange) {
