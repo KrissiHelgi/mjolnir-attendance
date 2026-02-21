@@ -20,6 +20,12 @@ export async function getCurrentProfile() {
   return profile
 }
 
+/** Super admin: only kristjan@mjolnir.is can access Coach management. */
+export async function isSuperAdmin(): Promise<boolean> {
+  const user = await getCurrentUser()
+  return (user?.email ?? '').toLowerCase() === 'kristjan@mjolnir.is'
+}
+
 /** Returns start and end of "today" in UTC. For Iceland (UTC+0) this is correct. */
 export function getTodayStartEnd(_timezone?: string) {
   const now = new Date()

@@ -1,6 +1,8 @@
 -- Migration: Refactor to class_occurrences + coached_programs (no class_instances)
 -- Run this after the original schema. Drops class_instances, adds class_occurrences and profile column.
 
+create extension if not exists "uuid-ossp";
+
 -- 1. Add coached_programs to profiles
 alter table public.profiles
   add column if not exists coached_programs text[] not null default '{}';
@@ -11,7 +13,7 @@ alter table public.class_templates
 
 -- 3. New table: class_occurrences
 create table if not exists public.class_occurrences (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   class_template_id uuid references public.class_templates(id) on delete cascade not null,
   local_date date not null,
   starts_at timestamptz,
@@ -20,8 +22,10 @@ create table if not exists public.class_occurrences (
 
 alter table public.class_occurrences enable row level security;
 
+drop policy if exists "Authenticated users can read occurrences" on public.class_occurrences;
 create policy "Authenticated users can read occurrences"
   on public.class_occurrences for select to authenticated using (true);
+drop policy if exists "Authenticated users can insert occurrences" on public.class_occurrences;
 create policy "Authenticated users can insert occurrences"
   on public.class_occurrences for insert to authenticated with check (true);
 
@@ -31,7 +35,7 @@ alter table if exists public.attendance_logs drop constraint if exists attendanc
 drop table if exists public.attendance_logs;
 
 create table public.attendance_logs (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   class_occurrence_id uuid references public.class_occurrences(id) on delete cascade unique not null,
   headcount int not null check (headcount >= 0),
   created_by uuid references public.profiles(id) on delete restrict not null,
@@ -41,6 +45,7 @@ create table public.attendance_logs (
 
 alter table public.attendance_logs enable row level security;
 
+drop policy if exists "Authenticated users can read attendance" on public.attendance_logs;
 create policy "Authenticated users can read attendance"
   on public.attendance_logs for select to authenticated using (true);
 
@@ -56,6 +61,7 @@ returns boolean language sql security definer stable set search_path = public as
   );
 $$;
 
+drop policy if exists "Admins and coaches can log attendance" on public.attendance_logs;
 create policy "Admins and coaches can log attendance"
   on public.attendance_logs for all
   using (public.coach_can_log_for_occurrence(class_occurrence_id))

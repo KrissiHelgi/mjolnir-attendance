@@ -7,15 +7,19 @@ create table if not exists public.app_settings (
 
 alter table public.app_settings enable row level security;
 
+drop policy if exists "Authenticated users can read app_settings" on public.app_settings;
 create policy "Authenticated users can read app_settings"
   on public.app_settings for select to authenticated using (true);
 
+drop policy if exists "Admins can insert app_settings" on public.app_settings;
 create policy "Admins can insert app_settings"
   on public.app_settings for insert with check (public.is_admin());
 
+drop policy if exists "Admins can update app_settings" on public.app_settings;
 create policy "Admins can update app_settings"
   on public.app_settings for update using (public.is_admin());
 
+drop trigger if exists update_app_settings_updated_at on public.app_settings;
 create trigger update_app_settings_updated_at
   before update on public.app_settings
   for each row execute procedure public.handle_updated_at();

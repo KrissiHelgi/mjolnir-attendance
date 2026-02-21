@@ -1,9 +1,10 @@
-import { getCurrentProfile } from '@/lib/helpers'
+import { getCurrentProfile, isSuperAdmin } from '@/lib/helpers'
 import { signOut } from '@/lib/actions/auth'
 import Link from 'next/link'
 
 export async function Navigation() {
   const profile = await getCurrentProfile()
+  const superAdmin = await isSuperAdmin()
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -51,6 +52,14 @@ export async function Navigation() {
                     Analytics
                   </Link>
                 </>
+              )}
+              {superAdmin && (
+                <Link
+                  href="/admin/coaches"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Coaches
+                </Link>
               )}
             </div>
           </div>
