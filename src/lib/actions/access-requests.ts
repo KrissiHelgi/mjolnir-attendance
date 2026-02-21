@@ -96,13 +96,13 @@ export async function approveAccessRequest(requestId: string): Promise<{ error?:
 export async function denyAccessRequest(requestId: string): Promise<{ error?: string }> {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
   const supabase = await createClient()
-  const { data: user } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getUser()
   const { error } = await supabase
     .from('access_requests')
     .update({
       status: 'denied',
       decided_at: new Date().toISOString(),
-      decided_by: user.data.user?.id ?? null,
+      decided_by: data?.user?.id ?? null,
     })
     .eq('id', requestId)
     .eq('status', 'pending')
