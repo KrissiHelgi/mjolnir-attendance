@@ -51,3 +51,51 @@ export function getTodayLocalDate(): string {
 export function getTodayWeekday(): number {
   return new Date().getUTCDay()
 }
+
+/** Parse YYYY-MM-DD from query param; returns null if invalid. */
+export function parseLocalDateParam(input: string | null | undefined): string | null {
+  const s = (input ?? '').trim()
+  if (!s) return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!match) return null
+  const [, y, m, d] = match
+  const year = parseInt(y!, 10)
+  const month = parseInt(m!, 10) - 1
+  const day = parseInt(d!, 10)
+  const date = new Date(Date.UTC(year, month, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) return null
+  return s
+}
+
+/** Add delta days to local date YYYY-MM-DD. Returns YYYY-MM-DD. */
+export function addDaysToLocalDate(localDate: string, delta: number): string {
+  const d = new Date(localDate + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + delta)
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Compare two YYYY-MM-DD strings. Returns -1 if a < b, 0 if equal, 1 if a > b. */
+export function compareLocalDates(a: string, b: string): number {
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
+}
+
+/** Weekday 0–6 for a given local date YYYY-MM-DD (UTC). */
+export function getWeekdayForLocalDate(localDate: string): number {
+  const d = new Date(localDate + 'T12:00:00Z')
+  return d.getUTCDay()
+}
+
+const WEEKDAY_NAMES = ['Sun', 'Mán', 'Þri', 'Mið', 'Fim', 'Fös', 'Lau']
+
+/** Format local date for display e.g. "Mið 2026-02-21". */
+export function formatLocalDateLabel(localDate: string): string {
+  const d = new Date(localDate + 'T12:00:00Z')
+  const weekday = d.getUTCDay()
+  const name = WEEKDAY_NAMES[weekday] ?? 'Day'
+  return `${name} ${localDate}`
+}

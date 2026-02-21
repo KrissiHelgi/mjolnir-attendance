@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ClassCard } from '@/components/ClassCard'
+import { addDaysToLocalDate, formatLocalDateLabel } from '@/lib/dates'
 
 export type DashboardCard = {
   occurrenceId: string
@@ -23,12 +24,19 @@ export function DashboardClient({
   allCards = null,
   isAdmin,
   showAllClassesBanner = false,
+  selectedLocalDate,
+  todayLocalDate,
+  viewOnly = false,
 }: {
   cards: DashboardCard[]
   allCards?: DashboardCard[] | null
   isAdmin: boolean
   showAllClassesBanner?: boolean
+  selectedLocalDate: string
+  todayLocalDate: string
+  viewOnly?: boolean
 }) {
+  const isToday = selectedLocalDate === todayLocalDate
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [localHeadcounts, setLocalHeadcounts] = useState<Record<string, number>>({})
   const [toast, setToast] = useState<string | null>(null)
@@ -65,6 +73,44 @@ export function DashboardClient({
         </div>
       )}
 
+      {/* Day navigator */}
+      <div className="flex items-center justify-between gap-2 mb-4 py-2 px-1">
+        <Link
+          href={`/?date=${addDaysToLocalDate(selectedLocalDate, -1)}`}
+          className="min-h-[44px] px-4 rounded-xl border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        >
+          ◀ Prev
+        </Link>
+        <div className="flex flex-col items-center gap-0.5">
+          <Link
+            href={isToday ? '/' : `/?date=${todayLocalDate}`}
+            className={`min-h-[44px] px-4 rounded-xl font-medium ${
+              isToday
+                ? 'bg-blue-600 text-white'
+                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Today
+          </Link>
+          <span className="text-sm text-gray-600">{formatLocalDateLabel(selectedLocalDate)}</span>
+        </div>
+        <Link
+          href={`/?date=${addDaysToLocalDate(selectedLocalDate, 1)}`}
+          className="min-h-[44px] px-4 rounded-xl border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        >
+          Next ▶
+        </Link>
+      </div>
+
+      {!isToday && (
+        <p className="mb-3 text-sm text-gray-600">Viewing: {selectedLocalDate}</p>
+      )}
+      {viewOnly && (
+        <p className="mb-3 text-sm font-medium text-amber-800 rounded-lg bg-amber-100 px-3 py-2">
+          Future day (view only)
+        </p>
+      )}
+
       {showAllClassesBanner && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="font-medium text-amber-900">Sýni alla tíma</p>
@@ -99,6 +145,7 @@ export function DashboardClient({
             onExpandToggle={() => handleExpandToggle(card.occurrenceId)}
             onSaved={(headcount) => handleSaved(card.occurrenceId, headcount)}
             localHeadcount={localHeadcounts[card.occurrenceId]}
+            viewOnly={viewOnly}
           />
         ))}
         {allCards && allCards.length > initialCards.length && (
@@ -107,7 +154,7 @@ export function DashboardClient({
             onClick={() => setShowAllClasses((prev) => !prev)}
             className="rounded-2xl border-2 border-dashed border-gray-300 bg-white p-5 text-center font-medium text-gray-700 shadow-sm hover:border-gray-400 hover:bg-gray-50"
           >
-            {showAllClasses ? 'Show my classes only' : 'See all classes today'}
+            {showAllClasses ? 'Show my classes only' : isToday ? 'See all classes today' : 'See all classes'}
           </button>
         )}
       </div>

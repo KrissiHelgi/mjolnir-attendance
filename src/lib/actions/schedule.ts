@@ -185,3 +185,14 @@ export async function clearSchedule(): Promise<{ error?: string }> {
   revalidatePath('/')
   return {}
 }
+
+/** Whether any attendance logs exist (used to strengthen overwrite warning). */
+export async function hasAttendanceLogs(): Promise<boolean> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('attendance_logs')
+    .select('id')
+    .limit(1)
+  if (error) return false
+  return (data?.length ?? 0) > 0
+}

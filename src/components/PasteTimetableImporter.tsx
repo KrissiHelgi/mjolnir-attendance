@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation'
 import { parsePasteTimetable, type PasteResult } from '@/lib/paste-timetable'
 import { getProgramLabel } from '@/lib/programs'
 import { importPasteTimetable } from '@/lib/actions/schedule'
+import { OverwriteScheduleConfirmModal } from '@/components/OverwriteScheduleConfirmModal'
 
 const WEEKDAY_NAMES = ['Sun', 'Mán', 'Þri', 'Mið', 'Fim', 'Fös', 'Lau']
 
-export function PasteTimetableImporter() {
+export function PasteTimetableImporter({ hasLogs = false }: { hasLogs?: boolean }) {
   const router = useRouter()
   const [tsv, setTsv] = useState('')
   const [preview, setPreview] = useState<PasteResult | null>(null)
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [overwriteModalOpen, setOverwriteModalOpen] = useState(false)
 
   function handlePreview() {
     setImportError(null)
@@ -22,18 +24,19 @@ export function PasteTimetableImporter() {
     setPreview(result)
   }
 
-  async function handleImport() {
+  async function handleOverwriteConfirm() {
     setImportError(null)
     setImporting(true)
     try {
       const out = await importPasteTimetable(tsv)
       if ('error' in out) {
-        setImportError(out.error)
+        setImportError(out.error ?? 'Import failed')
         return
       }
       setToast(`Imported ${out.imported} classes. ${out.excluded > 0 ? `(${out.excluded} excluded)` : ''}`)
       setTsv('')
       setPreview(null)
+      setOverwriteModalOpen(false)
       router.refresh()
     } finally {
       setImporting(false)
@@ -71,13 +74,21 @@ export function PasteTimetableImporter() {
         </button>
         <button
           type="button"
-          onClick={handleImport}
-          disabled={!tsv.trim() || importing || (preview != null && preview.included.length === 0)}
-          className="min-h-[44px] px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+          onClick={() => setOverwriteModalOpen(true)}
+          disabled={!tsv.trim() || (preview != null && preview.included.length === 0)}
+          className="min-h-[44px] px-4 py-2 rounded-lg border-2 border-red-400 bg-red-50 text-red-800 text-sm font-medium hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {importing ? 'Importing…' : 'Import (Overwrite schedule)'}
+          Overwrite schedule
         </button>
       </div>
+
+      <OverwriteScheduleConfirmModal
+        open={overwriteModalOpen}
+        onClose={() => setOverwriteModalOpen(false)}
+        hasLogs={hasLogs}
+        onConfirm={handleOverwriteConfirm}
+        importing={importing}
+      />
 
       {importError && (
         <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">

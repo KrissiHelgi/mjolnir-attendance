@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile, isSuperAdmin } from '@/lib/helpers'
 import { redirect } from 'next/navigation'
-import { deleteTemplate, clearSchedule, type ClassTemplate } from '@/lib/actions/schedule'
+import { deleteTemplate, clearSchedule, hasAttendanceLogs, type ClassTemplate, updateTemplate } from '@/lib/actions/schedule'
 import { PasteTimetableImporter } from '@/components/PasteTimetableImporter'
 import { WeeklyScheduleTable } from '@/components/WeeklyScheduleTable'
 import { ClearScheduleButton } from '@/components/ClearScheduleButton'
@@ -15,6 +15,7 @@ export default async function AdminSchedulePage() {
   }
 
   const superAdmin = await isSuperAdmin()
+  const hasLogs = await hasAttendanceLogs()
 
   const supabase = await createClient()
   const { data: classes, error } = await supabase
@@ -50,8 +51,15 @@ export default async function AdminSchedulePage() {
       <div className="space-y-6">
         {superAdmin && (
           <>
-            <PasteTimetableImporter />
             <AddClassSection />
+            <details className="rounded-lg bg-white shadow-sm border overflow-hidden group">
+              <summary className="px-6 py-4 cursor-pointer list-none font-semibold text-gray-900 bg-amber-50/80 hover:bg-amber-50 border-b border-amber-100">
+                Advanced / Dangerous — Paste timetable (overwrite)
+              </summary>
+              <div className="p-6 border-t border-gray-100">
+                <PasteTimetableImporter hasLogs={hasLogs} />
+              </div>
+            </details>
           </>
         )}
 
@@ -64,6 +72,7 @@ export default async function AdminSchedulePage() {
           </div>
           <WeeklyScheduleTable
             classes={(classes ?? []) as (ClassTemplate & { id: string })[]}
+            updateAction={updateTemplate}
             deleteAction={deleteTemplate}
             canModify={superAdmin}
           />

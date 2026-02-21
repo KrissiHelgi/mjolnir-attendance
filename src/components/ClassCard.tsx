@@ -21,6 +21,7 @@ export function ClassCard({
   onExpandToggle,
   onSaved,
   localHeadcount,
+  viewOnly = false,
 }: {
   occurrenceId: string
   programLabel: string
@@ -37,6 +38,7 @@ export function ClassCard({
   onExpandToggle?: () => void
   onSaved?: (headcount: number) => void
   localHeadcount?: number
+  viewOnly?: boolean
 }) {
   const displayHeadcount = localHeadcount ?? currentHeadcount
   const hasAttendance = displayHeadcount !== undefined
@@ -56,7 +58,7 @@ export function ClassCard({
     if (expanded) setError(null)
   }, [expanded])
 
-  const isLockedNoAction = locked && !canEdit
+  const isLockedNoAction = viewOnly || (locked && !canEdit)
 
   async function submit(headcountNum: number, adminOverride?: boolean) {
     setLoading(true)
@@ -97,11 +99,13 @@ export function ClassCard({
           ? 'Edit attendance'
           : 'Log attendance'
 
-  const statusLabel = isLockedNoAction
-    ? 'Locked'
-    : hasAttendance
-      ? 'Logged'
-      : 'Not logged'
+  const statusLabel = viewOnly
+    ? 'View only'
+    : isLockedNoAction
+      ? 'Locked'
+      : hasAttendance
+        ? 'Logged'
+        : 'Not logged'
 
   return (
     <>
@@ -159,11 +163,13 @@ export function ClassCard({
             <span className="font-bold text-gray-900">{programLabel}</span>
             <span
               className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
-                statusLabel === 'Locked'
-                  ? 'bg-amber-100 text-amber-800'
-                  : statusLabel === 'Logged'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-700'
+                statusLabel === 'View only'
+                  ? 'bg-gray-100 text-gray-600'
+                  : statusLabel === 'Locked'
+                    ? 'bg-amber-100 text-amber-800'
+                    : statusLabel === 'Logged'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-700'
               }`}
             >
               {statusLabel === 'Locked' ? '🔒 Locked' : statusLabel}

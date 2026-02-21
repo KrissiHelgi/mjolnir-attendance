@@ -3,25 +3,36 @@
 import { useState } from 'react'
 import { getProgramLabel } from '@/lib/programs'
 import { getWeekdayLabel } from '@/lib/class-titles'
+import { ScheduleForm } from '@/components/ScheduleForm'
 import type { ClassTemplate } from '@/lib/actions/schedule'
 
 export function WeeklyScheduleTable({
   classes,
+  updateAction,
   deleteAction,
   canModify = false,
 }: {
   classes: (ClassTemplate & { id: string })[]
+  updateAction?: (id: string, data: Partial<ClassTemplate>) => Promise<{ error?: string } | { success?: boolean }>
   deleteAction: (id: string) => Promise<{ error?: string }>
   canModify?: boolean
 }) {
   const [error, setError] = useState<string | null>(null)
+  const [editingRow, setEditingRow] = useState<(ClassTemplate & { id: string }) | null>(null)
+  const [deleteRow, setDeleteRow] = useState<(ClassTemplate & { id: string }) | null>(null)
 
   async function handleDelete(id: string) {
-    if (!confirm('Remove this class from the weekly schedule?')) return
     setError(null)
     const result = await deleteAction(id)
     if (result.error) setError(result.error)
-    else if (typeof window !== 'undefined') window.location.reload()
+    else {
+      setDeleteRow(null)
+      if (typeof window !== 'undefined') window.location.reload()
+    }
+  }
+
+  function formatTime(st: string): string {
+    return String(st).slice(0, 5)
   }
 
   if (classes.length === 0) {
@@ -59,16 +70,25 @@ export function WeeklyScheduleTable({
             {classes.map((row) => (
               <tr key={row.id}>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{getWeekdayLabel(row.weekday)}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{String(row.start_time).slice(0, 5)}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatTime(String(row.start_time))}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{getProgramLabel(row.program)}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{row.title}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.location || '—'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.capacity ?? '—'}</td>
                 {canModify && (
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-2">
+                    {updateAction && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingRow(row)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleDelete(row.id)}
+                      onClick={() => setDeleteRow(row)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Delete
@@ -80,6 +100,66 @@ export function WeeklyScheduleTable({
           </tbody>
         </table>
       </div>
+
+      {editingRow && updateAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Edit class</h3>
+              <p className="text-sm text-amber-800 mb-4">
+                Changing day, time, or title will effectively “move” this slot. History will still follow the same class (same ID).
+              </p>
+              <ScheduleForm
+                updateAction={updateAction}
+                templateId={editingRow.id}
+                initialData={{
+                  program: editingRow.program,
+                  title: editingRow.title,
+                  weekday: editingRow.weekday,
+                  start_time: formatTime(String(editingRow.start_time)),
+                  location: editingRow.location,
+                  capacity: editingRow.capacity,
+                }}
+                onSuccess={() => setEditingRow(null)}
+              />
+              <button
+                type="button"
+                onClick={() => setEditingRow(null)}
+                className="mt-4 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900">Delete this class?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Remove <strong>{getWeekdayLabel(deleteRow.weekday)} {formatTime(String(deleteRow.start_time))} — {getProgramLabel(deleteRow.program)} {deleteRow.title}</strong> from the weekly schedule?
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteRow(null)}
+                className="min-h-[44px] px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(deleteRow.id)}
+                className="min-h-[44px] px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

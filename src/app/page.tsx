@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentProfile } from '@/lib/helpers'
-import { getTodayLocalDate, getTodayWeekday } from '@/lib/helpers'
+import {
+  getCurrentProfile,
+  getTodayLocalDate,
+  parseLocalDateParam,
+  getWeekdayForLocalDate,
+  compareLocalDates,
+} from '@/lib/helpers'
 import { getProgramLabel } from '@/lib/programs'
 import { canEditAttendance } from '@/lib/attendance-lock'
 import { getOrCreateOccurrence } from '@/lib/actions/dashboard'
@@ -13,7 +18,15 @@ export const dynamic = 'force-dynamic'
 
 const WEEKDAY_NAMES = ['Sun', 'Mán', 'Þri', 'Mið', 'Fim', 'Fös', 'Lau']
 
-export default async function DashboardPage() {
+type PageProps = { searchParams: Promise<{ date?: string }> }
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const resolved = await searchParams
+  const todayDate = getTodayLocalDate()
+  const selectedLocalDate = parseLocalDateParam(resolved.date) ?? todayDate
+  const selectedWeekday = getWeekdayForLocalDate(selectedLocalDate)
+  const isFuture = compareLocalDates(selectedLocalDate, todayDate) > 0
+
   let user = null
   let profile = null
   let cards: Array<{
@@ -31,8 +44,6 @@ export default async function DashboardPage() {
   }> = []
   let allCardsWhenFiltered: typeof cards | null = null
   let loadError: string | null = null
-  let todayDate = getTodayLocalDate()
-  let todayWeekday = getTodayWeekday()
 
   try {
     const supabase = await createClient()
@@ -44,14 +55,12 @@ export default async function DashboardPage() {
     }
 
     profile = await getCurrentProfile()
-    todayDate = getTodayLocalDate()
-    todayWeekday = getTodayWeekday()
 
-    // Templates for today's weekday
+    // Templates for selected date's weekday
     let templatesQuery = supabase
       .from('class_templates')
       .select('id, program, title, start_time, location, capacity')
-      .eq('weekday', todayWeekday)
+      .eq('weekday', selectedWeekday)
       .order('start_time', { ascending: true })
 
     const { data: templates, error: templatesError } = await templatesQuery
@@ -72,7 +81,7 @@ export default async function DashboardPage() {
       for (const template of filtered) {
         const { data: occ, error: occError } = await getOrCreateOccurrence(
           template.id,
-          todayDate,
+          selectedLocalDate,
           template.start_time
         )
         if (occError) {
@@ -81,7 +90,9 @@ export default async function DashboardPage() {
         }
         if (!occ?.id || !occ.starts_at) continue
 
-        const editState = canEditAttendance(isAdmin, occ.starts_at)
+        const editState = isFuture
+          ? { locked: true, allowed: false }
+          : canEditAttendance(isAdmin, occ.starts_at)
 
         const { data: log } = await supabase
           .from('attendance_logs')
@@ -116,11 +127,13 @@ export default async function DashboardPage() {
         for (const template of templatesList) {
           const { data: occ, error: occError } = await getOrCreateOccurrence(
             template.id,
-            todayDate,
+            selectedLocalDate,
             template.start_time
           )
           if (occError || !occ?.id || !occ.starts_at) continue
-          const editState = canEditAttendance(isAdmin, occ.starts_at)
+          const editState = isFuture
+            ? { locked: true, allowed: false }
+            : canEditAttendance(isAdmin, occ.starts_at)
           const { data: log } = await supabase
             .from('attendance_logs')
             .select('headcount')
@@ -170,22 +183,28 @@ export default async function DashboardPage() {
         <AdminMissingBanner count={missingLogsCount} />
       )}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Classes Today</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {selectedLocalDate === todayDate ? 'My Classes Today' : 'My Classes'}
+        </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+          {selectedLocalDate === todayDate
+            ? new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })
+            : selectedLocalDate}
         </p>
       </div>
 
       {cards.length === 0 && (!allCardsWhenFiltered || allCardsWhenFiltered.length === 0) ? (
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200 text-center">
-          <p className="text-lg font-medium text-gray-700">Engir tímar í dag</p>
+          <p className="text-lg font-medium text-gray-700">
+            {selectedLocalDate === todayDate ? 'Engir tímar í dag' : `Engir tímar ${selectedLocalDate}`}
+          </p>
           <p className="mt-2 text-sm text-gray-500">
-            Sía: {todayDate} ({WEEKDAY_NAMES[todayWeekday] ?? todayWeekday}). Tímar birtast þegar þú velur íþróttir í prófílnum þínum.
+            Sía: {selectedLocalDate} ({WEEKDAY_NAMES[selectedWeekday] ?? selectedWeekday}). Tímar birtast þegar þú velur íþróttir í prófílnum þínum.
           </p>
           {profile?.role === 'admin' && (
             <p className="mt-2 text-sm text-gray-600">
@@ -210,6 +229,9 @@ export default async function DashboardPage() {
             (profile?.role === 'coach' || profile?.role === 'head_coach') &&
             (!Array.isArray(profile?.coached_programs) || profile.coached_programs.length === 0)
           }
+          selectedLocalDate={selectedLocalDate}
+          todayLocalDate={todayDate}
+          viewOnly={isFuture}
         />
       )}
     </div>
