@@ -6,6 +6,7 @@ import { PasteTimetableImporter } from '@/components/PasteTimetableImporter'
 import { WeeklyScheduleTable } from '@/components/WeeklyScheduleTable'
 import { ClearScheduleButton } from '@/components/ClearScheduleButton'
 import { AddClassSection } from '@/components/AddClassSection'
+import { EditProgramSection } from '@/components/EditProgramSection'
 
 export default async function AdminSchedulePage() {
   const profile = await getCurrentProfile()
@@ -70,6 +71,14 @@ export default async function AdminSchedulePage() {
               <ClearScheduleButton clearAction={clearSchedule} hasRows={(classes?.length ?? 0) > 0} />
             )}
           </div>
+          {superAdmin && (classes?.length ?? 0) > 0 && (
+            <div className="mb-4">
+              <EditProgramSection
+                programKeys={[...new Set((classes ?? []).map((c: { program: string }) => c.program))]}
+                classes={classes ?? []}
+              />
+            </div>
+          )}
           <WeeklyScheduleTable
             classes={(classes ?? []) as (ClassTemplate & { id: string })[]}
             updateAction={updateTemplate}

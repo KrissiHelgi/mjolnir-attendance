@@ -120,6 +120,35 @@ export async function updateTemplate(id: string, data: Partial<ClassTemplate>) {
   return { success: true }
 }
 
+/** Update capacity and/or location for all class_templates with the given program. Super admin only. */
+export async function updateProgramDefaults(
+  program: string,
+  data: { location?: string | null; capacity?: number | null }
+): Promise<{ error?: string } | { updated: number }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
+  if (!isValidProgramKey(program)) return { error: 'Invalid program' }
+
+  const updatePayload: { location?: string | null; capacity?: number | null } = {}
+  if (data.location !== undefined) updatePayload.location = data.location === '' ? null : data.location
+  if (data.capacity !== undefined) updatePayload.capacity = data.capacity === null || data.capacity === '' || Number.isNaN(Number(data.capacity)) || Number(data.capacity) < 0 ? null : Number(data.capacity)
+
+  if (Object.keys(updatePayload).length === 0) return { error: 'Nothing to update' }
+
+  const { data: updated, error } = await supabase
+    .from('class_templates')
+    .update(updatePayload)
+    .eq('program', program)
+    .select('id')
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/schedule')
+  revalidatePath('/')
+  return { updated: updated?.length ?? 0 }
+}
+
 export async function deleteTemplate(id: string) {
   const supabase = await createClient()
 
