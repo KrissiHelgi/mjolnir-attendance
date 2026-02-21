@@ -1,6 +1,5 @@
 import { signIn } from '@/lib/actions/auth'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {
@@ -71,9 +70,15 @@ export default async function LoginPage() {
             </button>
           </div>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Need access? <Link href="/request-access" className="text-blue-600 hover:underline">Request coach access</Link>
-        </p>
+        <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+          <p className="text-sm text-gray-500 mb-3">Need access?</p>
+          <a
+            href="/request-access"
+            className="inline-block w-full rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
+          >
+            Request coach access
+          </a>
+        </div>
       </div>
     </div>
   )
