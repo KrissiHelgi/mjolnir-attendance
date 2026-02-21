@@ -18,17 +18,16 @@ export async function signIn(formData: FormData) {
     return { error: error.message }
   }
 
-  // Ensure profile exists
+  // Ensure profile exists and redirect pending users
   const { data: { user } } = await supabase.auth.getUser()
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, role')
       .eq('id', user.id)
       .single()
 
     if (!profile) {
-      // Create profile if it doesn't exist
       await supabase
         .from('profiles')
         .insert({
@@ -36,6 +35,9 @@ export async function signIn(formData: FormData) {
           full_name: user.email?.split('@')[0] || '',
           role: 'coach',
         })
+    } else if (profile.role === 'pending') {
+      revalidatePath('/', 'layout')
+      redirect('/pending')
     }
   }
 

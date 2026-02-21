@@ -5,7 +5,7 @@ create extension if not exists "uuid-ossp";
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
   full_name text,
-  role text check (role in ('admin', 'coach', 'head_coach')) not null default 'coach',
+  role text check (role in ('admin', 'coach', 'head_coach', 'pending')) not null default 'coach',
   coached_programs text[] not null default '{}',
   created_at timestamptz default now() not null
 );
@@ -39,6 +39,7 @@ create table public.app_settings (
 -- Access requests: coaches request access; super admin approves/denies in Coach management
 create table public.access_requests (
   id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete set null,
   email text not null,
   full_name text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),

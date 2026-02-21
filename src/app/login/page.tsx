@@ -71,12 +71,12 @@ export default async function LoginPage() {
           </div>
         </form>
         <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-          <p className="text-sm text-gray-500 mb-3">Need access?</p>
+          <p className="text-sm text-gray-500 mb-3">Don’t have an account?</p>
           <a
             href="/request-access"
             className="inline-block w-full rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
           >
-            Request coach access
+            Create an account
           </a>
         </div>
       </div>
