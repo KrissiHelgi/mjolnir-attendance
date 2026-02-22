@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/** Keep session cookie for 1 year so users stay logged in until they sign out. */
+const SESSION_COOKIE_MAX_AGE_SEC = 365 * 24 * 60 * 60
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -33,7 +36,7 @@ export async function updateSession(request: NextRequest) {
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, { ...options, maxAge: SESSION_COOKIE_MAX_AGE_SEC })
           )
         },
       },
