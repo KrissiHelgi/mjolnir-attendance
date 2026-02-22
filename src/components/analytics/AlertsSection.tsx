@@ -5,6 +5,7 @@ import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow } from '@/lib/an
 import type { MissingLog } from '@/lib/analytics'
 import type { ThresholdRow } from '@/lib/actions/analytics'
 import { getThresholds, updateThreshold, markMissingAsNa } from '@/lib/actions/analytics'
+import { formatLocalDateLabel } from '@/lib/dates'
 
 type Props = {
   alerts: LowAttendanceAlert[] | null
@@ -203,7 +204,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
               <tbody>
                 {alerts.map((a, i) => (
                   <tr key={i} className="border-b border-gray-100">
-                    <td className="py-2 px-2">{a.date}</td>
+                    <td className="py-2 px-2">{formatLocalDateLabel(a.date)}</td>
                     <td className="py-2 px-2">{a.time}</td>
                     <td className="py-2 px-2">{a.programLabel}</td>
                     <td className="py-2 px-2 text-gray-600">{a.title}</td>
@@ -245,7 +246,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
                     <ul className="text-xs space-y-0.5">
                       {alertsBySlot.get(s.templateId)!.map((a, i) => (
                         <li key={i}>
-                          {a.date} {a.time} — {a.programLabel} — {a.title} — headcount {a.headcount} (threshold {a.threshold})
+                          {formatLocalDateLabel(a.date)} {a.time} — {a.programLabel} — {a.title} — headcount {a.headcount} (threshold {a.threshold})
                         </li>
                       ))}
                     </ul>
@@ -282,7 +283,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
                   <tbody>
                     {overCapacity.map((row, i) => (
                       <tr key={i} className="border-b border-gray-100">
-                        <td className="py-2 px-2">{row.date}</td>
+                        <td className="py-2 px-2">{formatLocalDateLabel(row.date)}</td>
                         <td className="py-2 px-2">{row.time}</td>
                         <td className="py-2 px-2">{row.programLabel}</td>
                         <td className="py-2 px-2 text-gray-600">{row.title}</td>
@@ -309,7 +310,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
             <div className="space-y-4">
               {missingByDay.map(({ date, items }) => (
                 <div key={date} className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800">{date}</div>
+                  <div className="bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800">{formatLocalDateLabel(date)}</div>
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">

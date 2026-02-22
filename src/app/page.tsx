@@ -5,6 +5,7 @@ import {
   parseLocalDateParam,
   getWeekdayForLocalDate,
   compareLocalDates,
+  formatLocalDateLabelWithWeekday,
 } from '@/lib/helpers'
 import { getProgramLabel } from '@/lib/programs'
 import { canEditAttendance } from '@/lib/attendance-lock'
@@ -15,8 +16,6 @@ import { AdminMissingBanner } from '@/components/AdminMissingBanner'
 import { getMissingLogsCount, last7DaysRange } from '@/lib/analytics'
 
 export const dynamic = 'force-dynamic'
-
-const WEEKDAY_NAMES = ['Sun', 'Mán', 'Þri', 'Mið', 'Fim', 'Fös', 'Lau']
 
 type PageProps = { searchParams: Promise<{ date?: string }> }
 
@@ -187,24 +186,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           {selectedLocalDate === todayDate ? 'My Classes Today' : 'My Classes'}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {selectedLocalDate === todayDate
-            ? new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })
-            : selectedLocalDate}
+          {formatLocalDateLabelWithWeekday(selectedLocalDate)}
         </p>
       </div>
 
       {cards.length === 0 && (!allCardsWhenFiltered || allCardsWhenFiltered.length === 0) ? (
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200 text-center">
           <p className="text-lg font-medium text-gray-700">
-            {selectedLocalDate === todayDate ? 'Engir tímar í dag' : `Engir tímar ${selectedLocalDate}`}
+            {selectedLocalDate === todayDate ? 'Engir tímar í dag' : `Engir tímar ${formatLocalDateLabelWithWeekday(selectedLocalDate)}`}
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            Sía: {selectedLocalDate} ({WEEKDAY_NAMES[selectedWeekday] ?? selectedWeekday}). Tímar birtast þegar þú velur íþróttir í prófílnum þínum.
+            Sía: {formatLocalDateLabelWithWeekday(selectedLocalDate)}. Tímar birtast þegar þú velur íþróttir í prófílnum þínum.
           </p>
           {profile?.role === 'admin' && (
             <p className="mt-2 text-sm text-gray-600">

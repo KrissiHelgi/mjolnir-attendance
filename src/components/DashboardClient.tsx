@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ClassCard } from '@/components/ClassCard'
-import { addDaysToLocalDate, formatLocalDateLabel } from '@/lib/dates'
+import { addDaysToLocalDate, formatLocalDateLabelWithWeekday } from '@/lib/dates'
 
 export type DashboardCard = {
   occurrenceId: string
@@ -92,7 +92,7 @@ export function DashboardClient({
             className="flex-1 flex items-center justify-center min-h-[44px] font-semibold text-gray-900 hover:opacity-80"
             aria-label="Go to today"
           >
-            {formatLocalDateLabel(selectedLocalDate)}
+            {formatLocalDateLabelWithWeekday(selectedLocalDate)}
           </Link>
         )}
         <Link
@@ -105,7 +105,7 @@ export function DashboardClient({
       </div>
 
       {!isToday && (
-        <p className="mb-3 text-sm text-gray-600">Viewing: {selectedLocalDate}</p>
+        <p className="mb-3 text-sm text-gray-600">Viewing: {formatLocalDateLabelWithWeekday(selectedLocalDate)}</p>
       )}
       {viewOnly && (
         <p className="mb-3 text-sm font-medium text-amber-800 rounded-lg bg-amber-100 px-3 py-2">

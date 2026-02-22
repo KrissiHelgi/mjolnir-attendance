@@ -10,6 +10,7 @@ import {
 } from '@/lib/actions/coaches'
 import { approveAccessRequest, denyAccessRequest } from '@/lib/actions/access-requests'
 import type { AccessRequestRow } from '@/lib/actions/access-requests'
+import { formatLocalDateLabel } from '@/lib/dates'
 
 export function CoachManagementClient({
   initialCoaches,
@@ -126,7 +127,7 @@ export function CoachManagementClient({
                   <tr key={r.id} className="border-t border-gray-100">
                     <td className="px-3 py-2">{r.email}</td>
                     <td className="px-3 py-2">{r.full_name || '—'}</td>
-                    <td className="px-3 py-2 text-gray-500">{new Date(r.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-gray-500">{formatLocalDateLabel(r.created_at.slice(0, 10))}</td>
                     <td className="px-3 py-2 flex flex-wrap gap-2">
                       <button
                         type="button"

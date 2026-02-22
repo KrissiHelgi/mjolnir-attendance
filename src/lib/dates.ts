@@ -10,12 +10,22 @@ export function addDaysToLocalDate(localDate: string, delta: number): string {
   return `${y}-${m}-${day}`
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAY_NAMES = ['Sun', 'Mán', 'Þri', 'Mið', 'Fim', 'Fös', 'Lau']
 
-/** Format local date for display e.g. "Mið 2026-02-21". */
+/** Format YYYY-MM-DD as alphanumeric e.g. "22 Feb 2026". */
 export function formatLocalDateLabel(localDate: string): string {
   const d = new Date(localDate + 'T12:00:00Z')
-  const weekday = d.getUTCDay()
-  const name = WEEKDAY_NAMES[weekday] ?? 'Day'
-  return `${name} ${localDate}`
+  const day = d.getUTCDate()
+  const month = MONTH_NAMES[d.getUTCMonth()] ?? ''
+  const year = d.getUTCFullYear()
+  return `${day} ${month} ${year}`
+}
+
+/** Format with weekday for dashboard e.g. "Sun 22 Feb 2026". */
+export function formatLocalDateLabelWithWeekday(localDate: string): string {
+  const d = new Date(localDate + 'T12:00:00Z')
+  const weekday = WEEKDAY_NAMES[d.getUTCDay()] ?? ''
+  const rest = formatLocalDateLabel(localDate)
+  return `${weekday} ${rest}`
 }
