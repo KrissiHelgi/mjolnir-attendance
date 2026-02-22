@@ -20,7 +20,11 @@ const KEY_TO_LABEL = new Map<string, string>(PROGRAMS.map((p) => [p.key, p.label
 const VALID_KEYS = new Set<string>(PROGRAMS.map((p) => p.key))
 
 export function getProgramLabel(key: string): string {
-  return KEY_TO_LABEL.get(key) ?? key
+  const known = KEY_TO_LABEL.get(key)
+  if (known) return known
+  if (!key) return key
+  const spaced = key.replace(/_/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase()
 }
 
 export function isValidProgramKey(key: string): boolean {
@@ -32,6 +36,25 @@ export function getProgramKeys(): string[] {
   return PROGRAMS.map((p) => p.key)
 }
 
+/** Merge fixed PROGRAMS with custom program keys from DB (e.g. from class_templates). Use for profile checkbox list. */
+export function getProgramsWithCustom(extraKeys: string[]): Array<{ key: string; label: string }> {
+  const seen = new Set<string>()
+  const out: Array<{ key: string; label: string }> = []
+  for (const p of PROGRAMS) {
+    out.push({ key: p.key, label: p.label })
+    seen.add(p.key)
+  }
+  const custom: Array<{ key: string; label: string }> = []
+  for (const key of extraKeys) {
+    const k = (key ?? '').trim()
+    if (!k || seen.has(k)) continue
+    seen.add(k)
+    custom.push({ key: k, label: getProgramLabel(k) })
+  }
+  custom.sort((a, b) => a.label.localeCompare(b.label))
+  return [...out, ...custom]
+}
+
 /** Resolve label or key to key (for CSV/import). Case-insensitive label match. */
 export function normalizeProgramKey(value: string): string | null {
   const v = value.trim()
@@ -39,4 +62,9 @@ export function normalizeProgramKey(value: string): string | null {
   const lower = v.toLowerCase()
   const found = PROGRAMS.find((p) => p.label.toLowerCase() === lower)
   return found ? found.key : null
+}
+
+/** Normalize custom program name to a key (lowercase, spaces to underscores). */
+export function toCustomProgramKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || 'custom'
 }

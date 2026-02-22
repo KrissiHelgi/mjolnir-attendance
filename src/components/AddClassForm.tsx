@@ -2,14 +2,19 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { PROGRAMS } from '@/lib/programs'
+import { PROGRAMS, toCustomProgramKey } from '@/lib/programs'
 import { getTitlesForProgram, WEEKDAY_LABELS } from '@/lib/class-titles'
 import { createWeeklyClasses } from '@/lib/actions/schedule'
+
+const NEW_PROGRAM_VALUE = '__new_program__'
+const NEW_TITLE_VALUE = '__new_title__'
 
 export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) {
   const router = useRouter()
   const [program, setProgram] = useState('')
+  const [customProgramName, setCustomProgramName] = useState('')
   const [title, setTitle] = useState('')
+  const [customTitleName, setCustomTitleName] = useState('')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [startTime, setStartTime] = useState('')
   const [location, setLocation] = useState('')
@@ -18,7 +23,12 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const titleOptions = useMemo(() => getTitlesForProgram(program), [program])
+  const isCustomProgram = program === NEW_PROGRAM_VALUE
+  const isCustomTitle = title === NEW_TITLE_VALUE
+  const effectiveProgramKey = isCustomProgram ? toCustomProgramKey(customProgramName) : program
+  const effectiveTitle = isCustomTitle ? customTitleName.trim() : title
+
+  const titleOptions = useMemo(() => getTitlesForProgram(effectiveProgramKey), [effectiveProgramKey])
 
   useEffect(() => {
     if (!toast) return
@@ -32,12 +42,14 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
 
   async function handleSubmit(saveAndAddAnother: boolean) {
     setError(null)
-    if (!program.trim()) {
-      setError('Select a program')
+    const programToUse = isCustomProgram ? toCustomProgramKey(customProgramName) : program
+    const titleToUse = isCustomTitle ? customTitleName.trim() : title
+    if (!programToUse) {
+      setError(isCustomProgram ? 'Enter a program name' : 'Select a program')
       return
     }
-    if (!title.trim()) {
-      setError('Select a title')
+    if (!titleToUse) {
+      setError(isCustomTitle ? 'Enter a title' : 'Select a title')
       return
     }
     if (weekdays.length === 0) {
@@ -57,8 +69,8 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
 
     setSaving(true)
     const result = await createWeeklyClasses({
-      program,
-      title,
+      program: programToUse,
+      title: titleToUse,
       weekdays,
       start_time: timeStr,
       location: location.trim() || undefined,
@@ -105,6 +117,7 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
             onChange={(e) => {
               setProgram(e.target.value)
               setTitle('')
+              if (e.target.value !== NEW_PROGRAM_VALUE) setCustomProgramName('')
             }}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
           >
@@ -114,7 +127,18 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
                 {p.label}
               </option>
             ))}
+            <option value={NEW_PROGRAM_VALUE}>Create new program…</option>
           </select>
+          {isCustomProgram && (
+            <input
+              type="text"
+              value={customProgramName}
+              onChange={(e) => setCustomProgramName(e.target.value)}
+              placeholder="e.g. Yoga"
+              className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+              autoFocus
+            />
+          )}
         </div>
 
         <div>
@@ -124,8 +148,11 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
           <select
             id="add-title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={!program}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              if (e.target.value !== NEW_TITLE_VALUE) setCustomTitleName('')
+            }}
+            disabled={!program && !isCustomProgram}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100 sm:text-sm"
           >
             <option value="">— Select —</option>
@@ -134,7 +161,18 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
                 {t}
               </option>
             ))}
+            <option value={NEW_TITLE_VALUE}>Create new title…</option>
           </select>
+          {isCustomTitle && (
+            <input
+              type="text"
+              value={customTitleName}
+              onChange={(e) => setCustomTitleName(e.target.value)}
+              placeholder="e.g. Yoga Sunday"
+              className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+              autoFocus
+            />
+          )}
         </div>
       </div>
 

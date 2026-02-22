@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/server'
 import { isValidProgramKey } from '@/lib/programs'
 import { parsePasteTimetable } from '@/lib/paste-timetable'
 import { isSuperAdmin } from '@/lib/helpers'
-import { getTitlesForProgram } from '@/lib/class-titles'
 
 export type ClassTemplate = {
   id?: string
@@ -60,9 +59,11 @@ export async function createWeeklyClasses(params: {
   if (!user) return { error: 'Not authenticated' }
 
   const { program, title, weekdays, start_time, location, capacity } = params
-  if (!isValidProgramKey(program)) return { error: 'Invalid program' }
-  const allowedTitles = getTitlesForProgram(program)
-  if (!allowedTitles.includes(title)) return { error: 'Invalid title for this program' }
+  const programKey = program.trim()
+  if (!programKey || programKey.length > 80) return { error: 'Invalid program' }
+  const titleTrimmed = title.trim()
+  if (!titleTrimmed || titleTrimmed.length > 120) return { error: 'Invalid title' }
+  /* Allow any non-empty title (presets are suggestions; "Create new title" is supported). */
   if (!Array.isArray(weekdays) || weekdays.length === 0) return { error: 'Select at least one day' }
   const validDays = weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
   if (validDays.length === 0) return { error: 'Select at least one day' }
@@ -75,8 +76,8 @@ export async function createWeeklyClasses(params: {
   const normalizedTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 
   const rows = validDays.map((weekday) => ({
-    program,
-    title,
+    program: programKey,
+    title: titleTrimmed,
     weekday,
     start_time: normalizedTime,
     location: location?.trim() || null,

@@ -10,14 +10,10 @@ create table public.profiles (
   created_at timestamptz default now() not null
 );
 
--- Valid program keys (must match src/lib/programs.ts)
--- Class templates: weekly base schedule (recurring); program is a program key
+-- Class templates: weekly base schedule (recurring). program can be any text (see migration 20260234 for allowing custom programs).
 create table public.class_templates (
   id uuid default uuid_generate_v4() primary key,
-  program text not null check (program = any (array[
-    'bjj', 'mma', 'box', 'kickbox', 'vikingathrek', 'vx',
-    'v6_semi_privates', 'sjalfsvorn', 'heljardaetur', 'mommuthrek'
-  ])),
+  program text not null,
   title text not null,
   weekday int check (weekday >= 0 and weekday <= 6) not null,
   start_time time not null,
