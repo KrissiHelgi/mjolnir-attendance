@@ -7,6 +7,10 @@ const STEP_BUTTON_CLASS =
 
 const DEFAULT_MAX_HEADCOUNT = 60
 
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n))
+}
+
 export function AttendanceInput({
   initialValue = 0,
   onSave,
@@ -20,24 +24,23 @@ export function AttendanceInput({
   loading?: boolean
   error?: string | null
   autoFocus?: boolean
-  /** Max option in dropdown (e.g. from capacity). Default 60. */
   maxValue?: number
 }) {
-  const selectRef = useRef<HTMLSelectElement>(null)
-  const [value, setValue] = useState(Math.max(0, Math.min(initialValue, maxValue)))
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState(clamp(initialValue, 0, maxValue))
 
   useEffect(() => {
-    setValue((v) => Math.max(0, Math.min(initialValue, maxValue)))
+    setValue(clamp(initialValue, 0, maxValue))
   }, [initialValue, maxValue])
 
   useEffect(() => {
-    if (autoFocus && selectRef.current) {
-      selectRef.current.focus()
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus()
     }
   }, [autoFocus])
 
   function adjust(delta: number) {
-    setValue((v) => Math.max(0, Math.min(maxValue, v + delta)))
+    setValue((v) => clamp(v + delta, 0, maxValue))
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -45,7 +48,22 @@ export function AttendanceInput({
     onSave(value)
   }
 
-  const options = Array.from({ length: maxValue + 1 }, (_, i) => i)
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/\D/g, '')
+    if (raw === '') {
+      setValue(0)
+      return
+    }
+    const num = parseInt(raw, 10)
+    if (!Number.isNaN(num)) setValue(clamp(num, 0, maxValue))
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      inputRef.current?.blur()
+    }
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -64,20 +82,18 @@ export function AttendanceInput({
         >
           −1
         </button>
-        <select
-          ref={selectRef}
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
           value={value}
-          onChange={(e) => setValue(Number(e.target.value))}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           disabled={loading}
           aria-label="Headcount"
-          className="flex-1 min-w-0 min-h-[56px] text-center text-2xl font-bold rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white cursor-pointer px-2 py-2 touch-manipulation [&>option]:text-lg"
-        >
-          {options.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+          className="flex-1 min-w-0 min-h-[56px] text-center text-2xl font-bold rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white px-2 py-2 touch-manipulation [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
         <button
           type="button"
           aria-label="Increase by 1"
