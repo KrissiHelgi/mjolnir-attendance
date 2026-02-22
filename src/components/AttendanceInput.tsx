@@ -3,7 +3,9 @@
 import { useRef, useEffect, useState } from 'react'
 
 const STEP_BUTTON_CLASS =
-  'min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border-2 border-gray-300 bg-white text-lg font-bold text-gray-800 active:bg-gray-100 disabled:opacity-50'
+  'flex-1 min-w-0 min-h-[56px] flex items-center justify-center rounded-xl border-2 border-gray-300 bg-white text-2xl font-bold text-gray-800 active:bg-gray-100 disabled:opacity-50 touch-manipulation select-none'
+
+const DEFAULT_MAX_HEADCOUNT = 60
 
 export function AttendanceInput({
   initialValue = 0,
@@ -11,35 +13,39 @@ export function AttendanceInput({
   loading = false,
   error,
   autoFocus = true,
+  maxValue = DEFAULT_MAX_HEADCOUNT,
 }: {
   initialValue?: number
   onSave: (value: number) => void
   loading?: boolean
   error?: string | null
   autoFocus?: boolean
+  /** Max option in dropdown (e.g. from capacity). Default 60. */
+  maxValue?: number
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [value, setValue] = useState(Math.max(0, initialValue))
+  const selectRef = useRef<HTMLSelectElement>(null)
+  const [value, setValue] = useState(Math.max(0, Math.min(initialValue, maxValue)))
 
   useEffect(() => {
-    setValue((v) => Math.max(0, initialValue))
-  }, [initialValue])
+    setValue((v) => Math.max(0, Math.min(initialValue, maxValue)))
+  }, [initialValue, maxValue])
 
   useEffect(() => {
-    if (autoFocus && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+    if (autoFocus && selectRef.current) {
+      selectRef.current.focus()
     }
   }, [autoFocus])
 
   function adjust(delta: number) {
-    setValue((v) => Math.max(0, v + delta))
+    setValue((v) => Math.max(0, Math.min(maxValue, v + delta)))
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     onSave(value)
   }
+
+  const options = Array.from({ length: maxValue + 1 }, (_, i) => i)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -48,62 +54,44 @@ export function AttendanceInput({
           {error}
         </p>
       )}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Decrease by 5"
-            onClick={() => adjust(-5)}
-            disabled={loading || value < 5}
-            className={STEP_BUTTON_CLASS}
-          >
-            −5
-          </button>
-          <button
-            type="button"
-            aria-label="Decrease by 1"
-            onClick={() => adjust(-1)}
-            disabled={loading || value < 1}
-            className={STEP_BUTTON_CLASS}
-          >
-            −1
-          </button>
-        </div>
-        <input
-          ref={inputRef}
-          type="number"
-          min={0}
+      <div className="flex w-full items-stretch gap-2 sm:gap-3">
+        <button
+          type="button"
+          aria-label="Decrease by 1"
+          onClick={() => adjust(-1)}
+          disabled={loading || value < 1}
+          className={STEP_BUTTON_CLASS}
+        >
+          −1
+        </button>
+        <select
+          ref={selectRef}
           value={value}
-          onChange={(e) => setValue(Math.max(0, parseInt(e.target.value, 10) || 0))}
+          onChange={(e) => setValue(Number(e.target.value))}
           disabled={loading}
           aria-label="Headcount"
-          className="w-20 min-h-[48px] text-center text-2xl font-bold rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Increase by 1"
-            onClick={() => adjust(1)}
-            disabled={loading}
-            className={STEP_BUTTON_CLASS}
-          >
-            +1
-          </button>
-          <button
-            type="button"
-            aria-label="Increase by 5"
-            onClick={() => adjust(5)}
-            disabled={loading}
-            className={STEP_BUTTON_CLASS}
-          >
-            +5
-          </button>
-        </div>
+          className="flex-1 min-w-0 min-h-[56px] text-center text-2xl font-bold rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white cursor-pointer px-2 py-2 touch-manipulation [&>option]:text-lg"
+        >
+          {options.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          aria-label="Increase by 1"
+          onClick={() => adjust(1)}
+          disabled={loading || value >= maxValue}
+          className={STEP_BUTTON_CLASS}
+        >
+          +1
+        </button>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full min-h-[48px] rounded-xl bg-blue-600 text-white font-semibold text-base active:bg-blue-700 disabled:opacity-50"
+        className="w-full min-h-[52px] rounded-xl bg-blue-600 text-white font-semibold text-base active:bg-blue-700 disabled:opacity-50 touch-manipulation"
       >
         {loading ? 'Saving…' : 'Save'}
       </button>

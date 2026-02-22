@@ -201,6 +201,7 @@ export function ClassCard({
               loading={loading}
               error={error ?? undefined}
               autoFocus
+              maxValue={capacity != null ? Math.max(60, capacity + 15) : 60}
             />
           </div>
         )}
