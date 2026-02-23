@@ -207,6 +207,94 @@ export async function getAvgAttendanceByProgram(range: DateRange): Promise<{
   return { data }
 }
 
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+/** Display order Mon–Sun for chart X axis */
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
+
+export type WeeklyWeekdayRow = { weekday: string; [programKey: string]: string | number }
+
+/**
+ * Average attendance per weekday (Mon–Sun) across the date range.
+ * Missing logs count as 0. Returns one row per weekday in order Mon..Sun; each row has weekday + one key per program.
+ */
+export async function getWeeklyWeekdayAverages(
+  range: DateRange,
+  programFilter?: string
+): Promise<{ error?: string; data?: WeeklyWeekdayRow[] }> {
+  const supabase = await createClient()
+
+  const { data: occs, error: occError } = await supabase
+    .from('class_occurrences')
+    .select('id, local_date, class_templates!inner(program)')
+    .gte('local_date', range.startDate)
+    .lte('local_date', range.endDate)
+
+  if (occError) return { error: occError.message }
+
+  type OccRow = { id: string; local_date: string; class_templates: { program: string } | { program: string }[] }
+  const occList = (occs ?? []) as OccRow[]
+  const occIds = occList.map((o) => o.id)
+  if (occIds.length === 0) {
+    const empty: WeeklyWeekdayRow[] = WEEKDAY_ORDER.map((w) => ({ weekday: WEEKDAY_LABELS[w] }))
+    return { data: empty }
+  }
+
+  const { data: logs } = await supabase
+    .from('attendance_logs')
+    .select('class_occurrence_id, headcount')
+    .in('class_occurrence_id', occIds)
+
+  const logByOcc = new Map<string, number>()
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+    logByOcc.set(l.class_occurrence_id, l.headcount)
+  })
+
+  const dateProgramTotal = new Map<string, Map<string, number>>()
+  occList.forEach((o) => {
+    const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
+    const program = t?.program
+    if (!program) return
+    if (programFilter && program !== programFilter) return
+    const date = o.local_date
+    if (!dateProgramTotal.has(date)) dateProgramTotal.set(date, new Map())
+    const perProgram = dateProgramTotal.get(date)!
+    const h = logByOcc.get(o.id) ?? 0
+    perProgram.set(program, (perProgram.get(program) ?? 0) + h)
+  })
+
+  const programs = new Set<string>()
+  dateProgramTotal.forEach((m) => m.forEach((_, p) => programs.add(p)))
+
+  const start = new Date(range.startDate + 'T12:00:00Z')
+  const end = new Date(range.endDate + 'T12:00:00Z')
+  const weekdayCount = [0, 0, 0, 0, 0, 0, 0] as number[]
+  const weekdaySums = new Map<string, number[]>()
+  programs.forEach((p) => weekdaySums.set(p, [0, 0, 0, 0, 0, 0, 0]))
+
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const localDate = formatLocalDate(d)
+    const w = d.getUTCDay()
+    weekdayCount[w]++
+    const perProgram = dateProgramTotal.get(localDate)
+    programs.forEach((program) => {
+      const arr = weekdaySums.get(program)!
+      arr[w] += perProgram?.get(program) ?? 0
+    })
+  }
+
+  const data: WeeklyWeekdayRow[] = WEEKDAY_ORDER.map((w) => {
+    const row: WeeklyWeekdayRow = { weekday: WEEKDAY_LABELS[w] }
+    const n = weekdayCount[w] || 1
+    programs.forEach((program) => {
+      const arr = weekdaySums.get(program)!
+      row[program] = Math.round((arr[w] / n) * 100) / 100
+    })
+    return row
+  })
+
+  return { data }
+}
+
 export type CoachPerformanceRow = {
   coachId: string
   coachName: string

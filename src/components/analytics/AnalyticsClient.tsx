@@ -9,11 +9,13 @@ import { CoachesSection } from '@/components/analytics/CoachesSection'
 import { UtilizationSection } from '@/components/analytics/UtilizationSection'
 import { AlertsSection } from '@/components/analytics/AlertsSection'
 import { ExportSection } from '@/components/analytics/ExportSection'
+import { WeeklySection } from '@/components/analytics/WeeklySection'
 import { getProgramKeys } from '@/lib/programs'
 import {
   fetchOverview,
   fetchSlotTimeSeries,
   fetchAvgByProgram,
+  fetchWeeklyWeekdayAverages,
   fetchCoachPerformance,
   fetchCapacityUtilization,
   fetchCapacityUtilizationBySlot,
@@ -27,7 +29,7 @@ import {
 import type { DateRange } from '@/lib/analytics'
 import type { SlotOption } from '@/lib/actions/analytics'
 
-const TABS = ['Overview', 'Slots', 'Coaches', 'Utilization', 'Alerts', 'Export'] as const
+const TABS = ['Overview', 'Slots', 'Weekly', 'Coaches', 'Utilization', 'Alerts', 'Export'] as const
 type Tab = (typeof TABS)[number]
 
 type Props = {
@@ -72,6 +74,9 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [missingLogs, setMissingLogs] = useState<Awaited<ReturnType<typeof fetchMissingLogs>>['data'] | null>(null)
   const [overCapacity, setOverCapacity] = useState<Awaited<ReturnType<typeof fetchOverCapacityLogs>>['data'] | null>(null)
   const [alertsError, setAlertsError] = useState<string | null>(null)
+  const [weeklyData, setWeeklyData] = useState<Awaited<ReturnType<typeof fetchWeeklyWeekdayAverages>>['data'] | null>(null)
+  const [weeklyError, setWeeklyError] = useState<string | null>(null)
+  const [weeklyProgramFilter, setWeeklyProgramFilter] = useState('')
 
   const programKeys = getProgramKeys()
 
@@ -140,6 +145,13 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     if (!rOver.error) setOverCapacity(rOver.data ?? null)
   }, [range.startDate, range.endDate])
 
+  const loadWeekly = useCallback(async () => {
+    setWeeklyError(null)
+    const r = await fetchWeeklyWeekdayAverages(range, weeklyProgramFilter || undefined)
+    if (r.error) setWeeklyError(r.error)
+    else setWeeklyData(r.data ?? null)
+  }, [range.startDate, range.endDate, weeklyProgramFilter])
+
   useEffect(() => {
     loadOverview()
     loadProgramAvg()
@@ -168,6 +180,9 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   useEffect(() => {
     if (activeTab === 'Alerts') loadAlerts()
   }, [activeTab, loadAlerts])
+  useEffect(() => {
+    if (activeTab === 'Weekly') loadWeekly()
+  }, [activeTab, weeklyProgramFilter, loadWeekly])
 
   useEffect(() => {
     if (activeTab === 'Alerts' && scrollToMissing) {
@@ -220,6 +235,15 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
               <ProgramAvgSection data={programAvg ?? null} error={programAvgError ?? undefined} />
             </div>
           </div>
+        )}
+        {activeTab === 'Weekly' && (
+          <WeeklySection
+            data={weeklyData ?? null}
+            programKeys={programKeys}
+            programFilter={weeklyProgramFilter}
+            onProgramFilterChange={setWeeklyProgramFilter}
+            error={weeklyError ?? undefined}
+          />
         )}
         {activeTab === 'Slots' && (
           <SlotsSection

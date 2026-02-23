@@ -8,6 +8,7 @@ import {
   getOverview,
   getSlotTimeSeries,
   getAvgAttendanceByProgram,
+  getWeeklyWeekdayAverages,
   getCoachPerformance,
   getCapacityUtilization,
   getLowAttendanceAlerts,
@@ -302,6 +303,14 @@ export async function fetchSlotTimeSeries(
 export async function fetchAvgByProgram(range: DateRange) {
   await requireAdmin()
   return getAvgAttendanceByProgram(range)
+}
+
+export async function fetchWeeklyWeekdayAverages(
+  range: DateRange,
+  programFilter?: string
+) {
+  await requireAdmin()
+  return getWeeklyWeekdayAverages(range, programFilter)
 }
 
 export async function fetchCoachPerformance(range: DateRange) {
