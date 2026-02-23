@@ -1,10 +1,10 @@
 /**
  * Single source of truth for attendance edit lock.
- * Lock rule: editing allowed if now <= starts_at + 1 hour (UTC).
+ * Lock rule: editing allowed if now <= starts_at + 6 hours (UTC).
  * Admins can always edit (override).
  */
 
-const LOCK_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+const LOCK_WINDOW_MS = 6 * 60 * 60 * 1000 // 6 hours
 
 export type CanEditResult =
   | { allowed: true; locked: false }
@@ -34,4 +34,4 @@ export function canEditAttendance(
 }
 
 export const LOCKED_MESSAGE =
-  'This class is locked. Editing allowed only within 1 hour after start.'
+  'This class is locked. Editing allowed only within 6 hours after start.'

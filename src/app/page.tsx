@@ -38,6 +38,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     location?: string
     capacity?: number
     headcount?: number
+    loggedByName?: string
     locked: boolean
     canEdit: boolean
     showOverride: boolean
@@ -92,16 +93,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         }
         if (!occ?.id || !occ.starts_at) continue
 
-        const editState = isFuture
-          ? { locked: true, allowed: false }
-          : canEditAttendance(isAdmin, occ.starts_at)
-
-        const { data: log } = await supabase
-          .from('attendance_logs')
-          .select('headcount')
-          .eq('class_occurrence_id', occ.id)
-          .single()
-
         const startTime = String(template.start_time)
         const timeStr =
           startTime.length >= 5
@@ -122,6 +113,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           finishedMinutesAgo = Math.floor((now - endMs) / 60000)
         }
 
+        const editState =
+          isFuture || status === 'upcoming'
+            ? { locked: true, allowed: false }
+            : canEditAttendance(isAdmin, occ.starts_at)
+
+        const { data: log } = await supabase
+          .from('attendance_logs')
+          .select('headcount, created_by_name')
+          .eq('class_occurrence_id', occ.id)
+          .single()
+
         cards.push({
           occurrenceId: occ.id,
           startsAt: occ.starts_at,
@@ -132,6 +134,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           location: template.location,
           capacity: template.capacity,
           headcount: log?.headcount,
+          loggedByName: log?.created_by_name ?? undefined,
           locked: editState.locked,
           canEdit: editState.allowed,
           showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
@@ -158,14 +161,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             template.start_time
           )
           if (occError || !occ?.id || !occ.starts_at) continue
-          const editState = isFuture
-            ? { locked: true, allowed: false }
-            : canEditAttendance(isAdmin, occ.starts_at)
-          const { data: log } = await supabase
-            .from('attendance_logs')
-            .select('headcount')
-            .eq('class_occurrence_id', occ.id)
-            .single()
           const startTime = String(template.start_time)
           const timeStr = startTime.length >= 5 ? `${startTime.slice(0, 5)}` : startTime
           const durationMin = template.duration_minutes ?? 60
@@ -178,6 +173,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           if (now < startMs) status = 'upcoming'
           else if (now < endMs) status = 'ongoing'
           else { status = 'finished'; finishedMinutesAgo = Math.floor((now - endMs) / 60000) }
+          const editState =
+            isFuture || status === 'upcoming'
+              ? { locked: true, allowed: false }
+              : canEditAttendance(isAdmin, occ.starts_at)
+          const { data: log } = await supabase
+            .from('attendance_logs')
+            .select('headcount, created_by_name')
+            .eq('class_occurrence_id', occ.id)
+            .single()
           allCardsWhenFiltered.push({
             occurrenceId: occ.id,
             startsAt: occ.starts_at,
@@ -188,6 +192,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             location: template.location,
             capacity: template.capacity,
             headcount: log?.headcount,
+            loggedByName: log?.created_by_name ?? undefined,
             locked: editState.locked,
             canEdit: editState.allowed,
             showOverride: editState.locked && editState.allowed && 'isOverride' in editState,

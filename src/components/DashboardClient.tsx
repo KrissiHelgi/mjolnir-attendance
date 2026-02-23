@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ClassCard } from '@/components/ClassCard'
 import { addDaysToLocalDate, formatLocalDateLabelWithWeekday } from '@/lib/dates'
@@ -15,6 +16,7 @@ export type DashboardCard = {
   location?: string
   capacity?: number
   headcount?: number
+  loggedByName?: string
   locked: boolean
   canEdit: boolean
   showOverride: boolean
@@ -39,6 +41,7 @@ export function DashboardClient({
   todayLocalDate: string
   viewOnly?: boolean
 }) {
+  const router = useRouter()
   const isToday = selectedLocalDate === todayLocalDate
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [localHeadcounts, setLocalHeadcounts] = useState<Record<string, number>>({})
@@ -62,6 +65,7 @@ export function DashboardClient({
     setLocalHeadcounts((prev) => ({ ...prev, [occurrenceId]: headcount }))
     setExpandedId(null)
     setToast('Attendance saved')
+    router.refresh()
   }
 
   return (
@@ -168,6 +172,7 @@ export function DashboardClient({
             viewOnly={viewOnly}
             status={card.status}
             finishedMinutesAgo={card.finishedMinutesAgo}
+            loggedByName={card.loggedByName}
           />
                 ))}
               </div>

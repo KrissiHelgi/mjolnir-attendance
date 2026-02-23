@@ -67,6 +67,7 @@ create table public.attendance_logs (
   class_occurrence_id uuid references public.class_occurrences(id) on delete cascade unique not null,
   headcount int not null check (headcount >= 0),
   created_by uuid references public.profiles(id) on delete restrict not null,
+  created_by_name text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
   notes text,

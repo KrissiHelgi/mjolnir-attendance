@@ -24,6 +24,7 @@ export function ClassCard({
   viewOnly = false,
   status,
   finishedMinutesAgo,
+  loggedByName,
 }: {
   occurrenceId: string
   programLabel: string
@@ -43,6 +44,7 @@ export function ClassCard({
   viewOnly?: boolean
   status?: 'finished' | 'ongoing' | 'upcoming'
   finishedMinutesAgo?: number
+  loggedByName?: string
 }) {
   const displayHeadcount = localHeadcount ?? currentHeadcount
   const hasAttendance = displayHeadcount !== undefined
@@ -183,6 +185,13 @@ export function ClassCard({
               {statusLabel === 'Locked' ? '🔒 Locked' : statusLabel}
             </span>
           </div>
+          {hasAttendance && loggedByName && (
+            <div className="flex justify-end mt-1">
+              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-full shrink-0">
+                Coach {loggedByName} confirmed attendance
+              </span>
+            </div>
+          )}
           {title && <p className="text-sm text-gray-600">{title}</p>}
           <p className="text-2xl font-bold text-gray-900 mt-1">{time}</p>
           {status === 'ongoing' && (
