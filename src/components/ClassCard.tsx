@@ -160,7 +160,9 @@ export function ClassCard({
             ? 'border-2 border-green-500 shadow-md active:bg-gray-50 [box-shadow:0_4px_14px_0_rgba(34,197,94,0.25)]'
             : status === 'finished' && finishedMinutesAgo !== undefined && finishedMinutesAgo < 60
               ? 'border-2 border-amber-500 shadow-md active:bg-gray-50 [box-shadow:0_4px_14px_0_rgba(245,158,11,0.3)]'
-              : `border border-gray-200 shadow-sm ${isLockedNoAction ? '' : 'active:bg-gray-50'}`
+              : status === 'finished'
+                ? 'border-2 border-red-500 shadow-md active:bg-gray-50 [box-shadow:0_4px_14px_0_rgba(239,68,68,0.25)]'
+                : `border border-gray-200 shadow-sm ${isLockedNoAction ? '' : 'active:bg-gray-50'}`
         }`}
       >
         <button
