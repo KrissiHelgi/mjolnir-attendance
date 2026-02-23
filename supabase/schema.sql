@@ -97,7 +97,7 @@ as $$
   );
 $$;
 
--- Returns true if current user is admin or has template.program in coached_programs
+-- Returns true if current user is admin or has role coach/head_coach (can log any class; profile programs are for filtering only)
 create or replace function public.coach_can_log_for_occurrence(occ_id uuid)
 returns boolean
 language sql
@@ -107,12 +107,9 @@ set search_path = public
 as $$
   select public.is_admin()
   or exists (
-    select 1
-    from public.class_occurrences o
-    join public.class_templates t on t.id = o.class_template_id
-    join public.profiles p on p.id = auth.uid()
-    where o.id = occ_id
-    and (p.coached_programs @> array[t.program])
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+    and p.role in ('coach', 'head_coach')
   );
 $$;
 
