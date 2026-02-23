@@ -19,6 +19,7 @@ create table public.class_templates (
   start_time time not null,
   location text,
   capacity int,
+  duration_minutes int not null default 60 check (duration_minutes > 0),
   default_coach_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -235,9 +236,9 @@ begin
   if not public.is_admin() then raise exception 'Unauthorized'; end if;
   delete from public.class_templates where true;
   if jsonb_array_length(p_templates) > 0 then
-    insert into public.class_templates (program, title, weekday, start_time, location, capacity)
+    insert into public.class_templates (program, title, weekday, start_time, location, capacity, duration_minutes)
     select (e->>'program')::text, (e->>'title')::text, (e->>'weekday')::int, (e->>'start_time')::time,
-           nullif(trim(e->>'location'), ''), (e->>'capacity')::int
+           nullif(trim(e->>'location'), ''), (e->>'capacity')::int, case when (e->>'duration_minutes')::int is null or (e->>'duration_minutes')::int < 1 then 60 else (e->>'duration_minutes')::int end
     from jsonb_array_elements(p_templates) as e;
   end if;
 end; $$;

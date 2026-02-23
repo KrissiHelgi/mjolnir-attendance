@@ -22,6 +22,8 @@ export function ClassCard({
   onSaved,
   localHeadcount,
   viewOnly = false,
+  status,
+  finishedMinutesAgo,
 }: {
   occurrenceId: string
   programLabel: string
@@ -39,6 +41,8 @@ export function ClassCard({
   onSaved?: (headcount: number) => void
   localHeadcount?: number
   viewOnly?: boolean
+  status?: 'finished' | 'ongoing' | 'upcoming'
+  finishedMinutesAgo?: number
 }) {
   const displayHeadcount = localHeadcount ?? currentHeadcount
   const hasAttendance = displayHeadcount !== undefined
@@ -149,8 +153,12 @@ export function ClassCard({
       )}
 
       <article
-        className={`rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden ${
-          isLockedNoAction ? '' : 'active:bg-gray-50'
+        className={`rounded-2xl bg-white overflow-hidden ${
+          status === 'ongoing'
+            ? 'border-2 border-green-500 shadow-md active:bg-gray-50 [box-shadow:0_4px_14px_0_rgba(34,197,94,0.25)]'
+            : status === 'finished' && finishedMinutesAgo !== undefined && finishedMinutesAgo < 60
+              ? 'border-2 border-amber-500 shadow-md active:bg-gray-50 [box-shadow:0_4px_14px_0_rgba(245,158,11,0.3)]'
+              : `border border-gray-200 shadow-sm ${isLockedNoAction ? '' : 'active:bg-gray-50'}`
         }`}
       >
         <button
@@ -177,6 +185,18 @@ export function ClassCard({
           </div>
           {title && <p className="text-sm text-gray-600">{title}</p>}
           <p className="text-2xl font-bold text-gray-900 mt-1">{time}</p>
+          {status === 'ongoing' && (
+            <p className="text-sm font-medium text-blue-700 mt-0.5">Ongoing</p>
+          )}
+          {status === 'finished' && finishedMinutesAgo !== undefined && finishedMinutesAgo < 180 && (
+            <p className="text-sm text-gray-600 mt-0.5">
+              {finishedMinutesAgo === 0
+                ? 'Just finished'
+                : finishedMinutesAgo >= 60
+                  ? `Finished ${Math.floor(finishedMinutesAgo / 60)} ${Math.floor(finishedMinutesAgo / 60) === 1 ? 'hour' : 'hours'} ago`
+                  : `Finished ${finishedMinutesAgo} min ago`}
+            </p>
+          )}
           {location && <p className="text-sm text-gray-500 mt-0.5">{location}</p>}
           <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
             {capacity != null && <span>Capacity: {capacity}</span>}

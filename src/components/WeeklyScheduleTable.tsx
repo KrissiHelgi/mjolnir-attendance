@@ -61,6 +61,7 @@ export function WeeklyScheduleTable({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Title</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Capacity</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Duration</th>
               {canModify && (
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               )}
@@ -75,6 +76,7 @@ export function WeeklyScheduleTable({
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{row.title}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.location || '—'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.capacity ?? '—'}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{(row as { duration_minutes?: number }).duration_minutes ?? 60}</td>
                 {canModify && (
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-2">
                     {updateAction && (
@@ -119,6 +121,7 @@ export function WeeklyScheduleTable({
                   start_time: formatTime(String(editingRow.start_time)),
                   location: editingRow.location,
                   capacity: editingRow.capacity,
+                  duration_minutes: (editingRow as { duration_minutes?: number }).duration_minutes ?? 60,
                 }}
                 onSuccess={() => setEditingRow(null)}
               />

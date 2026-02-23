@@ -8,6 +8,7 @@ import { addDaysToLocalDate, formatLocalDateLabelWithWeekday } from '@/lib/dates
 export type DashboardCard = {
   occurrenceId: string
   startsAt: string
+  endsAt?: string
   programLabel: string
   title: string
   time: string
@@ -17,6 +18,8 @@ export type DashboardCard = {
   locked: boolean
   canEdit: boolean
   showOverride: boolean
+  status: 'finished' | 'ongoing' | 'upcoming'
+  finishedMinutesAgo?: number
 }
 
 export function DashboardClient({
@@ -129,7 +132,22 @@ export function DashboardClient({
       )}
 
       <div className="flex flex-col gap-4">
-        {cardsToShow.map((card) => (
+        {(['finished', 'ongoing', 'upcoming'] as const).map((section) => {
+          const sectionCards = cardsToShow.filter((c) => c.status === section)
+          if (sectionCards.length === 0) return null
+          const sectionTitle =
+            section === 'finished'
+              ? 'Finished'
+              : section === 'ongoing'
+                ? 'Ongoing'
+                : 'Upcoming'
+          return (
+            <div key={section}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                {sectionTitle}
+              </h2>
+              <div className="flex flex-col gap-4">
+                {sectionCards.map((card) => (
           <ClassCard
             key={card.occurrenceId}
             occurrenceId={card.occurrenceId}
@@ -148,8 +166,14 @@ export function DashboardClient({
             onSaved={(headcount) => handleSaved(card.occurrenceId, headcount)}
             localHeadcount={localHeadcounts[card.occurrenceId]}
             viewOnly={viewOnly}
+            status={card.status}
+            finishedMinutesAgo={card.finishedMinutesAgo}
           />
-        ))}
+                ))}
+              </div>
+            </div>
+          )
+        })}
         {allCards && allCards.length > initialCards.length && (
           <button
             type="button"

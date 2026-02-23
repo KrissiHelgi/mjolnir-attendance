@@ -28,6 +28,8 @@ export function ScheduleForm({
     setLoading(true)
     setError(null)
 
+    const rawDuration = formData.get('duration_minutes')
+    const durationMinutes = rawDuration ? parseInt(String(rawDuration), 10) : 60
     const data: ClassTemplate = {
       program: formData.get('program') as string,
       title: formData.get('title') as string,
@@ -35,6 +37,7 @@ export function ScheduleForm({
       start_time: formData.get('start_time') as string,
       location: (formData.get('location') as string) || undefined,
       capacity: formData.get('capacity') ? parseInt(formData.get('capacity') as string) : undefined,
+      duration_minutes: (durationMinutes > 0 ? durationMinutes : 60) || undefined,
     }
 
     const result = isEdit
@@ -152,6 +155,20 @@ export function ScheduleForm({
             name="capacity"
             min="1"
             defaultValue={initialData?.capacity}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="duration_minutes" className="block text-sm font-medium text-gray-700">
+            Duration (min)
+          </label>
+          <input
+            type="number"
+            id="duration_minutes"
+            name="duration_minutes"
+            min="1"
+            defaultValue={initialData?.duration_minutes ?? 60}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
           />
         </div>

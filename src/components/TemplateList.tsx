@@ -49,6 +49,7 @@ export function TemplateList({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Day/Time</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Capacity</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Duration</th>
               <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
             </tr>
           </thead>
@@ -62,6 +63,7 @@ export function TemplateList({
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.location || '-'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.capacity ?? '-'}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{template.duration_minutes ?? 60}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-2">
                   <button
                     type="button"
@@ -98,6 +100,7 @@ export function TemplateList({
                 start_time: editing.start_time,
                 location: editing.location,
                 capacity: editing.capacity,
+                duration_minutes: editing.duration_minutes ?? 60,
               }}
               onSuccess={() => setEditingId(null)}
             />

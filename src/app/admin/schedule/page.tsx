@@ -21,7 +21,7 @@ export default async function AdminSchedulePage() {
   const supabase = await createClient()
   const { data: classes, error } = await supabase
     .from('class_templates')
-    .select('id, program, title, weekday, start_time, location, capacity')
+    .select('id, program, title, weekday, start_time, location, capacity, duration_minutes')
     .order('weekday', { ascending: true })
     .order('start_time', { ascending: true })
 

@@ -14,6 +14,7 @@ export type ClassTemplate = {
   start_time: string
   location?: string
   capacity?: number
+  duration_minutes?: number
 }
 
 export async function createTemplate(data: ClassTemplate) {
@@ -29,9 +30,10 @@ export async function createTemplate(data: ClassTemplate) {
     return { error: 'Invalid program key' }
   }
 
+  const duration = data.duration_minutes != null && data.duration_minutes > 0 ? data.duration_minutes : 60
   const { error, data: template } = await supabase
     .from('class_templates')
-    .insert({ program: data.program, title: data.title, weekday: data.weekday, start_time: data.start_time, location: data.location ?? null, capacity: data.capacity ?? null })
+    .insert({ program: data.program, title: data.title, weekday: data.weekday, start_time: data.start_time, location: data.location ?? null, capacity: data.capacity ?? null, duration_minutes: duration })
     .select()
     .single()
 
@@ -51,6 +53,7 @@ export async function createWeeklyClasses(params: {
   start_time: string
   location?: string
   capacity?: number
+  duration_minutes?: number
 }): Promise<{ error?: string } | { count: number; ids: string[] }> {
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
   const supabase = await createClient()
@@ -58,7 +61,8 @@ export async function createWeeklyClasses(params: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { program, title, weekdays, start_time, location, capacity } = params
+  const { program, title, weekdays, start_time, location, capacity, duration_minutes } = params
+  const duration = duration_minutes != null && duration_minutes > 0 ? duration_minutes : 60
   const programKey = program.trim()
   if (!programKey || programKey.length > 80) return { error: 'Invalid program' }
   const titleTrimmed = title.trim()
@@ -82,6 +86,7 @@ export async function createWeeklyClasses(params: {
     start_time: normalizedTime,
     location: location?.trim() || null,
     capacity: capacity != null && capacity >= 0 ? capacity : null,
+    duration_minutes: duration,
   }))
 
   const { data: inserted, error } = await supabase
@@ -121,10 +126,10 @@ export async function updateTemplate(id: string, data: Partial<ClassTemplate>) {
   return { success: true }
 }
 
-/** Update capacity and/or location for all class_templates with the given program. Super admin only. */
+/** Update capacity, location, and/or duration for all class_templates with the given program. Super admin only. */
 export async function updateProgramDefaults(
   program: string,
-  data: { location?: string | null; capacity?: number | null }
+  data: { location?: string | null; capacity?: number | null; duration_minutes?: number | null }
 ): Promise<{ error?: string } | { updated: number }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -132,11 +137,15 @@ export async function updateProgramDefaults(
   if (!(await isSuperAdmin())) return { error: 'Unauthorized' }
   if (!isValidProgramKey(program)) return { error: 'Invalid program' }
 
-  const updatePayload: { location?: string | null; capacity?: number | null } = {}
+  const updatePayload: { location?: string | null; capacity?: number | null; duration_minutes?: number } = {}
   if (data.location !== undefined) updatePayload.location = data.location === '' ? null : data.location
   if (data.capacity !== undefined) {
     const num = Number(data.capacity)
     updatePayload.capacity = data.capacity === null || Number.isNaN(num) || num < 0 ? null : num
+  }
+  if (data.duration_minutes !== undefined && data.duration_minutes !== null) {
+    const d = Number(data.duration_minutes)
+    if (!Number.isNaN(d) && d > 0) updatePayload.duration_minutes = d
   }
 
   if (Object.keys(updatePayload).length === 0) return { error: 'Nothing to update' }
@@ -197,6 +206,7 @@ export async function importPasteTimetable(tsv: string): Promise<
     start_time: t.start_time,
     location: t.location ?? undefined,
     capacity: t.capacity ?? undefined,
+    duration_minutes: 60,
   }))
 
   const { error } = await supabase.rpc('sync_class_templates', { p_templates: payload })

@@ -31,6 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   let cards: Array<{
     occurrenceId: string
     startsAt: string
+    endsAt: string
     programLabel: string
     title: string
     time: string
@@ -40,6 +41,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     locked: boolean
     canEdit: boolean
     showOverride: boolean
+    status: 'finished' | 'ongoing' | 'upcoming'
+    finishedMinutesAgo?: number
   }> = []
   let allCardsWhenFiltered: typeof cards | null = null
   let loadError: string | null = null
@@ -58,7 +61,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     // Templates for selected date's weekday
     let templatesQuery = supabase
       .from('class_templates')
-      .select('id, program, title, start_time, location, capacity')
+      .select('id, program, title, start_time, location, capacity, duration_minutes')
       .eq('weekday', selectedWeekday)
       .order('start_time', { ascending: true })
 
@@ -67,7 +70,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     if (templatesError) {
       loadError = templatesError.message
     } else if (templates && templates.length > 0) {
-      const templatesList = templates as Array<{ id: string; program: string; title: string; start_time: string; location?: string; capacity?: number }>
+      const templatesList = templates as Array<{ id: string; program: string; title: string; start_time: string; location?: string; capacity?: number; duration_minutes?: number }>
       const coachedPrograms = Array.isArray(profile?.coached_programs) ? profile!.coached_programs as string[] : []
       const isCoachOrHeadCoach = profile?.role === 'coach' || profile?.role === 'head_coach'
       const hasProgramFilter = isCoachOrHeadCoach && coachedPrograms.length > 0
@@ -105,9 +108,24 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             ? `${startTime.slice(0, 5)}`
             : startTime
 
+        const durationMin = template.duration_minutes ?? 60
+        const startMs = new Date(occ.starts_at).getTime()
+        const endMs = startMs + durationMin * 60 * 1000
+        const now = Date.now()
+        type Status = 'finished' | 'ongoing' | 'upcoming'
+        let status: Status
+        let finishedMinutesAgo: number | undefined
+        if (now < startMs) status = 'upcoming'
+        else if (now < endMs) status = 'ongoing'
+        else {
+          status = 'finished'
+          finishedMinutesAgo = Math.floor((now - endMs) / 60000)
+        }
+
         cards.push({
           occurrenceId: occ.id,
           startsAt: occ.starts_at,
+          endsAt: new Date(endMs).toISOString(),
           programLabel: getProgramLabel(template.program),
           title: template.title,
           time: timeStr,
@@ -117,8 +135,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           locked: editState.locked,
           canEdit: editState.allowed,
           showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
+          status,
+          finishedMinutesAgo,
         })
       }
+
+      // Order: finished (most recent first), then ongoing, then upcoming
+      cards.sort((a, b) => {
+        const order = { finished: 0, ongoing: 1, upcoming: 2 }
+        if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+        if (a.status === 'finished') return (b.finishedMinutesAgo ?? 0) - (a.finishedMinutesAgo ?? 0)
+        return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      })
 
       // When coach/head_coach has programs selected, build full list for "See all classes today"
       if (hasProgramFilter && templatesList.length > 0) {
@@ -140,9 +168,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             .single()
           const startTime = String(template.start_time)
           const timeStr = startTime.length >= 5 ? `${startTime.slice(0, 5)}` : startTime
+          const durationMin = template.duration_minutes ?? 60
+          const startMs = new Date(occ.starts_at).getTime()
+          const endMs = startMs + durationMin * 60 * 1000
+          const now = Date.now()
+          type S = 'finished' | 'ongoing' | 'upcoming'
+          let status: S
+          let finishedMinutesAgo: number | undefined
+          if (now < startMs) status = 'upcoming'
+          else if (now < endMs) status = 'ongoing'
+          else { status = 'finished'; finishedMinutesAgo = Math.floor((now - endMs) / 60000) }
           allCardsWhenFiltered.push({
             occurrenceId: occ.id,
             startsAt: occ.starts_at,
+            endsAt: new Date(endMs).toISOString(),
             programLabel: getProgramLabel(template.program),
             title: template.title,
             time: timeStr,
@@ -152,8 +191,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             locked: editState.locked,
             canEdit: editState.allowed,
             showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
+            status,
+            finishedMinutesAgo,
           })
         }
+        allCardsWhenFiltered.sort((a, b) => {
+          const order = { finished: 0, ongoing: 1, upcoming: 2 }
+          if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+          if (a.status === 'finished') return (b.finishedMinutesAgo ?? 0) - (a.finishedMinutesAgo ?? 0)
+          return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+        })
       }
     }
   } catch (err) {

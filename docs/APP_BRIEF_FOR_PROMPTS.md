@@ -28,7 +28,7 @@ Copy-paste this entire document to ChatGPT (or another LLM) so it can help you w
   - One row per auth user; created by trigger on `auth.users` insert (or by app for “create account” flow with role `pending`).
 
 - **class_templates**  
-  - Weekly recurring schedule: `id`, `program` (text, valid program key), `title`, `weekday` (0–6, Sunday=0), `start_time` (time), `location`, `capacity`, `default_coach_id` (FK profiles), `created_at`, `updated_at`. No duration field.  
+  - Weekly recurring schedule: `id`, `program` (text, valid program key), `title`, `weekday` (0–6, Sunday=0), `start_time` (time), `location`, `capacity`, `duration_minutes` (int, default 60), `default_coach_id` (FK profiles), `created_at`, `updated_at`.  
   - Program keys must match `src/lib/programs.ts` and the DB check.
 
 - **class_occurrences**  
@@ -67,7 +67,7 @@ Copy-paste this entire document to ChatGPT (or another LLM) so it can help you w
 
 ### RPC
 
-- **sync_class_templates(p_templates jsonb)**: admin-only; deletes all class_templates and inserts from JSON array (program, title, weekday, start_time, location, capacity). Used by paste importer and clear schedule.
+- **sync_class_templates(p_templates jsonb)**: admin-only; deletes all class_templates and inserts from JSON array (program, title, weekday, start_time, location, capacity, duration_minutes). Default duration 60 when missing or invalid. Used by paste importer and clear schedule.
 
 ---
 

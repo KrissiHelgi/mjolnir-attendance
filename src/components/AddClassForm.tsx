@@ -19,6 +19,7 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
   const [startTime, setStartTime] = useState('')
   const [location, setLocation] = useState('')
   const [capacity, setCapacity] = useState<string>('')
+  const [duration, setDuration] = useState<string>('60')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -68,6 +69,7 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
     }
 
     setSaving(true)
+    const durNum = duration.trim() === '' ? 60 : parseInt(duration, 10)
     const result = await createWeeklyClasses({
       program: programToUse,
       title: titleToUse,
@@ -75,6 +77,7 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
       start_time: timeStr,
       location: location.trim() || undefined,
       capacity: capNum,
+      duration_minutes: (durNum > 0 ? durNum : 60) || undefined,
     })
     setSaving(false)
 
@@ -230,6 +233,19 @@ export function AddClassForm({ onSaveSuccess }: { onSaveSuccess?: () => void }) 
             value={capacity}
             onChange={(e) => setCapacity(e.target.value)}
             placeholder="Optional"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+          />
+        </div>
+        <div>
+          <label htmlFor="add-duration" className="block text-sm font-medium text-gray-700">
+            Duration (min)
+          </label>
+          <input
+            id="add-duration"
+            type="number"
+            min={1}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
           />
         </div>
