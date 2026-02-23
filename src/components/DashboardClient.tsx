@@ -28,6 +28,7 @@ export function DashboardClient({
   cards: initialCards,
   allCards = null,
   isAdmin,
+  coachOptions = [],
   showAllClassesBanner = false,
   selectedLocalDate,
   todayLocalDate,
@@ -36,6 +37,7 @@ export function DashboardClient({
   cards: DashboardCard[]
   allCards?: DashboardCard[] | null
   isAdmin: boolean
+  coachOptions?: { id: string; full_name: string | null }[]
   showAllClassesBanner?: boolean
   selectedLocalDate: string
   todayLocalDate: string
@@ -173,6 +175,7 @@ export function DashboardClient({
             status={card.status}
             finishedMinutesAgo={card.finishedMinutesAgo}
             loggedByName={card.loggedByName}
+            coachOptions={coachOptions}
           />
                 ))}
               </div>

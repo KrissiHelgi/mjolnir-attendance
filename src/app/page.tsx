@@ -213,9 +213,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   let missingLogsCount: number | null = null
+  let coachOptions: { id: string; full_name: string | null }[] = []
   if (profile?.role === 'admin' && !loadError) {
     const r = await getMissingLogsCount(last7DaysRange())
     if (!r.error) missingLogsCount = r.count ?? 0
+    const supabaseForList = await createClient()
+    const { data: profilesList } = await supabaseForList
+      .from('profiles')
+      .select('id, full_name')
+      .in('role', ['admin', 'coach', 'head_coach'])
+      .order('full_name', { ascending: true, nullsFirst: false })
+    coachOptions = (profilesList ?? []).map((p) => ({ id: p.id, full_name: p.full_name ?? null }))
   }
 
   if (loadError) {
@@ -269,6 +277,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           cards={cards}
           allCards={allCardsWhenFiltered}
           isAdmin={profile?.role === 'admin'}
+          coachOptions={coachOptions}
           showAllClassesBanner={
             (profile?.role === 'coach' || profile?.role === 'head_coach') &&
             (!Array.isArray(profile?.coached_programs) || profile.coached_programs.length === 0)

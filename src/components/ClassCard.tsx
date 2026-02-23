@@ -25,6 +25,7 @@ export function ClassCard({
   status,
   finishedMinutesAgo,
   loggedByName,
+  coachOptions = [],
 }: {
   occurrenceId: string
   programLabel: string
@@ -45,6 +46,7 @@ export function ClassCard({
   status?: 'finished' | 'ongoing' | 'upcoming'
   finishedMinutesAgo?: number
   loggedByName?: string
+  coachOptions?: { id: string; full_name: string | null }[]
 }) {
   const displayHeadcount = localHeadcount ?? currentHeadcount
   const hasAttendance = displayHeadcount !== undefined
@@ -53,6 +55,7 @@ export function ClassCard({
   const [toast, setToast] = useState<string | null>(null)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
   const [pendingHeadcount, setPendingHeadcount] = useState<number | null>(null)
+  const [overrideCoachId, setOverrideCoachId] = useState<string>('')
 
   useEffect(() => {
     if (!toast) return
@@ -66,10 +69,10 @@ export function ClassCard({
 
   const isLockedNoAction = viewOnly || (locked && !canEdit)
 
-  async function submit(headcountNum: number, adminOverride?: boolean) {
+  async function submit(headcountNum: number, adminOverride?: boolean, createdByUserId?: string) {
     setLoading(true)
     setError(null)
-    const result = await logAttendance(occurrenceId, headcountNum, { adminOverride })
+    const result = await logAttendance(occurrenceId, headcountNum, { adminOverride, createdByUserId })
     setLoading(false)
     if ('error' in result && result.error) {
       if (result.code === 'LOCKED') setToast(LOCKED_MESSAGE)
@@ -78,12 +81,17 @@ export function ClassCard({
     }
     setShowOverrideConfirm(false)
     setPendingHeadcount(null)
+    setOverrideCoachId('')
     onSaved?.(headcountNum)
     onExpandToggle?.()
   }
 
   function handleSave(value: number) {
     if (showOverride) {
+      if (coachOptions.length > 0 && !overrideCoachId) {
+        setError('Select who coached this class')
+        return
+      }
       setPendingHeadcount(value)
       setShowOverrideConfirm(true)
       return
@@ -93,7 +101,7 @@ export function ClassCard({
 
   function confirmOverride() {
     if (pendingHeadcount === null) return
-    submit(pendingHeadcount, true)
+    submit(pendingHeadcount, true, coachOptions.length > 0 ? overrideCoachId || undefined : undefined)
   }
 
   const primaryLabel =
@@ -136,6 +144,7 @@ export function ClassCard({
                 onClick={() => {
                   setShowOverrideConfirm(false)
                   setPendingHeadcount(null)
+                  setOverrideCoachId('')
                 }}
                 className="min-h-[44px] px-4 rounded-xl text-gray-700 bg-gray-100 active:bg-gray-200"
               >
@@ -226,12 +235,35 @@ export function ClassCard({
 
         {expanded && (
           <div className="px-5 pb-5 pt-2 border-t border-gray-100">
+            {showOverride && coachOptions.length > 0 && (
+              <div className="mb-4">
+                <label htmlFor="override-coach" className="block text-sm font-medium text-gray-700 mb-1">
+                  Who coached this class?
+                </label>
+                <select
+                  id="override-coach"
+                  value={overrideCoachId}
+                  onChange={(e) => {
+                    setOverrideCoachId(e.target.value)
+                    setError(null)
+                  }}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="">— Select coach —</option>
+                  {coachOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name?.trim() || 'Unnamed'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <AttendanceInput
               initialValue={pendingHeadcount ?? displayHeadcount ?? 0}
               onSave={handleSave}
               loading={loading}
               error={error ?? undefined}
-              autoFocus
+              autoFocus={!showOverride || coachOptions.length === 0}
               maxValue={capacity != null ? Math.max(60, capacity + 15) : 60}
             />
           </div>

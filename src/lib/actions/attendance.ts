@@ -16,7 +16,7 @@ export type LogAttendanceResult =
 export async function logAttendance(
   classOccurrenceId: string,
   headcount: number,
-  options?: { notes?: string; adminOverride?: boolean }
+  options?: { notes?: string; adminOverride?: boolean; createdByUserId?: string }
 ): Promise<LogAttendanceResult> {
   const supabase = await createClient()
 
@@ -42,7 +42,21 @@ export async function logAttendance(
     .single()
 
   const isAdmin = profile?.role === 'admin'
-  const createdByName = (profile?.full_name ?? 'Coach')?.trim() || 'Coach'
+  let createdBy = user.id
+  let createdByName = (profile?.full_name ?? 'Coach')?.trim() || 'Coach'
+
+  if (options?.adminOverride && options?.createdByUserId && isAdmin) {
+    const { data: coachProfile } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('id', options.createdByUserId)
+      .single()
+    if (coachProfile?.id) {
+      createdBy = coachProfile.id
+      createdByName = (coachProfile.full_name ?? 'Coach')?.trim() || 'Coach'
+    }
+  }
+
   const startsAt = new Date(occurrence.starts_at)
   if (!isAdmin && Date.now() < startsAt.getTime()) {
     return { error: 'You can only log attendance after the class has started.', code: 'UNAUTHORIZED' }
@@ -62,7 +76,7 @@ export async function logAttendance(
       {
         class_occurrence_id: classOccurrenceId,
         headcount,
-        created_by: user.id,
+        created_by: createdBy,
         created_by_name: createdByName,
         notes: options?.notes ?? null,
       },
