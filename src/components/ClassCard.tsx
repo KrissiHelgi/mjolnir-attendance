@@ -87,21 +87,23 @@ export function ClassCard({
   }
 
   function handleSave(value: number) {
+    if (isAdmin && coachOptions.length > 0 && !overrideCoachId) {
+      setError('Select who coached this class')
+      return
+    }
     if (showOverride) {
-      if (coachOptions.length > 0 && !overrideCoachId) {
-        setError('Select who coached this class')
-        return
-      }
       setPendingHeadcount(value)
       setShowOverrideConfirm(true)
       return
     }
-    submit(value)
+    const createdBy = isAdmin && coachOptions.length > 0 ? overrideCoachId || undefined : undefined
+    submit(value, false, createdBy)
   }
 
   function confirmOverride() {
     if (pendingHeadcount === null) return
-    submit(pendingHeadcount, true, coachOptions.length > 0 ? overrideCoachId || undefined : undefined)
+    const createdBy = isAdmin && coachOptions.length > 0 ? overrideCoachId || undefined : undefined
+    submit(pendingHeadcount, true, createdBy)
   }
 
   const primaryLabel =
@@ -235,7 +237,7 @@ export function ClassCard({
 
         {expanded && (
           <div className="px-5 pb-5 pt-2 border-t border-gray-100">
-            {showOverride && coachOptions.length > 0 && (
+            {isAdmin && coachOptions.length > 0 && (
               <div className="mb-4">
                 <label htmlFor="override-coach" className="block text-sm font-medium text-gray-700 mb-1">
                   Who coached this class?
@@ -263,7 +265,7 @@ export function ClassCard({
               onSave={handleSave}
               loading={loading}
               error={error ?? undefined}
-              autoFocus={!showOverride || coachOptions.length === 0}
+              autoFocus={!isAdmin || coachOptions.length === 0}
               maxValue={capacity != null ? Math.max(60, capacity + 15) : 60}
             />
           </div>

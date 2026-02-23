@@ -45,7 +45,7 @@ export async function logAttendance(
   let createdBy = user.id
   let createdByName = (profile?.full_name ?? 'Coach')?.trim() || 'Coach'
 
-  if (options?.adminOverride && options?.createdByUserId && isAdmin) {
+  if (isAdmin && options?.createdByUserId) {
     const { data: coachProfile } = await supabase
       .from('profiles')
       .select('id, full_name')
