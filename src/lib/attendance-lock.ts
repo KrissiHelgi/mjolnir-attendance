@@ -1,10 +1,12 @@
 /**
  * Single source of truth for attendance edit lock.
- * Lock rule: editing allowed if now <= starts_at + 6 hours (UTC).
+ * - No log yet: lock at starts_at + 6 hours (UTC).
+ * - Already logged: lock at log updated_at + 30 minutes (so coaches can't accidentally edit after 30 min).
  * Admins can always edit (override).
  */
 
-const LOCK_WINDOW_MS = 6 * 60 * 60 * 1000 // 6 hours
+const LOCK_AFTER_CLASS_START_MS = 6 * 60 * 60 * 1000 // 6 hours when no log yet
+const LOCK_AFTER_LOG_SAVE_MS = 30 * 60 * 1000 // 30 min after last save when log exists
 
 export type CanEditResult =
   | { allowed: true; locked: false }
@@ -13,15 +15,18 @@ export type CanEditResult =
 
 /**
  * Returns whether the user can edit attendance and if the record is locked.
- * Use UTC for startsAt.
+ * When logUpdatedAt is set (attendance already saved), lock 30 min after that save.
+ * Otherwise lock 6 hours after class start.
  */
 export function canEditAttendance(
   isAdmin: boolean,
-  startsAtUtc: Date | string
+  startsAtUtc: Date | string,
+  logUpdatedAt?: string | null
 ): CanEditResult {
-  const start = typeof startsAtUtc === 'string' ? new Date(startsAtUtc) : startsAtUtc
-  const lockAt = new Date(start.getTime() + LOCK_WINDOW_MS)
-  const now = new Date()
+  const now = Date.now()
+  const lockAt = logUpdatedAt
+    ? new Date(logUpdatedAt).getTime() + LOCK_AFTER_LOG_SAVE_MS
+    : new Date(typeof startsAtUtc === 'string' ? startsAtUtc : startsAtUtc).getTime() + LOCK_AFTER_CLASS_START_MS
   const locked = now > lockAt
 
   if (isAdmin) {
@@ -34,4 +39,4 @@ export function canEditAttendance(
 }
 
 export const LOCKED_MESSAGE =
-  'This class is locked. Editing allowed only within 6 hours after start.'
+  'This class is locked. You can only edit within 6 hours of class start, or within 30 minutes of the last save. Ask an admin to override.'

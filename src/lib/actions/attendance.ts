@@ -10,7 +10,7 @@ export type LogAttendanceResult =
 
 /**
  * Single entry point for logging/updating attendance.
- * Enforces 6-hour lock after class start; admins can override.
+ * No log yet: lock 6h after class start. Already logged: lock 30 min after last save. Admins can override.
  * Logging only allowed once class has started (not upcoming).
  */
 export async function logAttendance(
@@ -61,7 +61,14 @@ export async function logAttendance(
   if (!isAdmin && Date.now() < startsAt.getTime()) {
     return { error: 'You can only log attendance after the class has started.', code: 'UNAUTHORIZED' }
   }
-  const result = canEditAttendance(isAdmin, occurrence.starts_at)
+
+  const { data: existingLog } = await supabase
+    .from('attendance_logs')
+    .select('updated_at')
+    .eq('class_occurrence_id', classOccurrenceId)
+    .single()
+
+  const result = canEditAttendance(isAdmin, occurrence.starts_at, existingLog?.updated_at ?? null)
 
   if (!result.allowed) {
     return { error: LOCKED_MESSAGE, code: 'LOCKED' }

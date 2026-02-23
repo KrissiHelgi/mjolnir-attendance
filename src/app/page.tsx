@@ -113,16 +113,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           finishedMinutesAgo = Math.floor((now - endMs) / 60000)
         }
 
+        const { data: log } = await supabase
+          .from('attendance_logs')
+          .select('headcount, created_by_name, updated_at')
+          .eq('class_occurrence_id', occ.id)
+          .single()
+
         const editState =
           isFuture || status === 'upcoming'
             ? { locked: true, allowed: false }
-            : canEditAttendance(isAdmin, occ.starts_at)
-
-        const { data: log } = await supabase
-          .from('attendance_logs')
-          .select('headcount, created_by_name')
-          .eq('class_occurrence_id', occ.id)
-          .single()
+            : canEditAttendance(isAdmin, occ.starts_at, log?.updated_at ?? null)
 
         cards.push({
           occurrenceId: occ.id,
@@ -173,15 +173,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           if (now < startMs) status = 'upcoming'
           else if (now < endMs) status = 'ongoing'
           else { status = 'finished'; finishedMinutesAgo = Math.floor((now - endMs) / 60000) }
+          const { data: log } = await supabase
+            .from('attendance_logs')
+            .select('headcount, created_by_name, updated_at')
+            .eq('class_occurrence_id', occ.id)
+            .single()
           const editState =
             isFuture || status === 'upcoming'
               ? { locked: true, allowed: false }
-              : canEditAttendance(isAdmin, occ.starts_at)
-          const { data: log } = await supabase
-            .from('attendance_logs')
-            .select('headcount, created_by_name')
-            .eq('class_occurrence_id', occ.id)
-            .single()
+              : canEditAttendance(isAdmin, occ.starts_at, log?.updated_at ?? null)
           allCardsWhenFiltered.push({
             occurrenceId: occ.id,
             startsAt: occ.starts_at,
