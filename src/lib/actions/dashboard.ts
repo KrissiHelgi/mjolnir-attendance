@@ -1,6 +1,26 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentProfile } from '@/lib/helpers'
+
+/**
+ * Delete a class occurrence (this instance only). Admin only. Template stays so class appears again next week.
+ */
+export async function deleteOccurrence(occurrenceId: string): Promise<{ error?: string }> {
+  const profile = await getCurrentProfile()
+  if (!profile || profile.role !== 'admin') return { error: 'Unauthorized' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('class_occurrences')
+    .delete()
+    .eq('id', occurrenceId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  return {}
+}
 
 /**
  * Get or create a class_occurrence for (template_id, local_date).

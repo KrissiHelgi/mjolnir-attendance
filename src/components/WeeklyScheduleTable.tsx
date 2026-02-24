@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { getProgramLabel } from '@/lib/programs'
 import { getWeekdayLabel } from '@/lib/class-titles'
 import { ScheduleForm } from '@/components/ScheduleForm'
@@ -12,14 +13,16 @@ export function WeeklyScheduleTable({
   deleteAction,
   canModify = false,
 }: {
-  classes: (ClassTemplate & { id: string })[]
+  classes: (ClassTemplate & { id: string; live?: boolean })[]
   updateAction?: (id: string, data: Partial<ClassTemplate>) => Promise<{ error?: string } | { success?: boolean }>
   deleteAction: (id: string) => Promise<{ error?: string }>
   canModify?: boolean
 }) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
-  const [editingRow, setEditingRow] = useState<(ClassTemplate & { id: string }) | null>(null)
+  const [editingRow, setEditingRow] = useState<(ClassTemplate & { id: string; live?: boolean }) | null>(null)
   const [deleteRow, setDeleteRow] = useState<(ClassTemplate & { id: string }) | null>(null)
+  const [liveTogglingId, setLiveTogglingId] = useState<string | null>(null)
 
   async function handleDelete(id: string) {
     setError(null)
@@ -29,6 +32,17 @@ export function WeeklyScheduleTable({
       setDeleteRow(null)
       if (typeof window !== 'undefined') window.location.reload()
     }
+  }
+
+  async function handleLiveToggle(row: ClassTemplate & { id: string; live?: boolean }) {
+    if (!updateAction || !canModify) return
+    const nextLive = !(row.live !== false)
+    setLiveTogglingId(row.id)
+    setError(null)
+    const result = await updateAction(row.id, { live: nextLive })
+    setLiveTogglingId(null)
+    if (result && 'error' in result && result.error) setError(result.error)
+    else router.refresh()
   }
 
   function formatTime(st: string): string {
@@ -62,6 +76,7 @@ export function WeeklyScheduleTable({
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Capacity</th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Duration</th>
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Live</th>
               {canModify && (
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               )}
@@ -77,6 +92,21 @@ export function WeeklyScheduleTable({
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.location || '—'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{row.capacity ?? '—'}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{(row as { duration_minutes?: number }).duration_minutes ?? 60}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm">
+                  {canModify && updateAction ? (
+                    <button
+                      type="button"
+                      onClick={() => handleLiveToggle(row)}
+                      disabled={liveTogglingId === row.id}
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${row.live !== false ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}
+                      title={row.live !== false ? 'Shown on dashboard. Click to hide.' : 'Hidden from dashboard. Click to show.'}
+                    >
+                      {liveTogglingId === row.id ? '…' : row.live !== false ? 'Live' : 'Off'}
+                    </button>
+                  ) : (
+                    <span className={row.live !== false ? 'text-green-600' : 'text-gray-400'}>{row.live !== false ? 'Live' : 'Off'}</span>
+                  )}
+                </td>
                 {canModify && (
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-2">
                     {updateAction && (

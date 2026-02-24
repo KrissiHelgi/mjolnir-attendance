@@ -59,11 +59,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
     profile = await getCurrentProfile()
 
-    // Templates for selected date's weekday
+    // Templates for selected date's weekday (only "live" classes show on dashboard)
     let templatesQuery = supabase
       .from('class_templates')
       .select('id, program, title, start_time, location, capacity, duration_minutes')
       .eq('weekday', selectedWeekday)
+      .eq('live', true)
       .order('start_time', { ascending: true })
 
     const { data: templates, error: templatesError } = await templatesQuery

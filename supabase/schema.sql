@@ -20,6 +20,7 @@ create table public.class_templates (
   location text,
   capacity int,
   duration_minutes int not null default 60 check (duration_minutes > 0),
+  live boolean not null default true,
   default_coach_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -173,6 +174,11 @@ create policy "Authenticated users can insert occurrences"
   to authenticated
   with check (true);
 
+create policy "Admins can delete occurrences"
+  on public.class_occurrences for delete
+  to authenticated
+  using (public.is_admin());
+
 -- Attendance: authenticated read; admin or coach (for that program) can insert/update
 create policy "Authenticated users can read attendance"
   on public.attendance_logs for select
@@ -234,9 +240,10 @@ begin
   if not public.is_admin() then raise exception 'Unauthorized'; end if;
   delete from public.class_templates where true;
   if jsonb_array_length(p_templates) > 0 then
-    insert into public.class_templates (program, title, weekday, start_time, location, capacity, duration_minutes)
+    insert into public.class_templates (program, title, weekday, start_time, location, capacity, duration_minutes, live)
     select (e->>'program')::text, (e->>'title')::text, (e->>'weekday')::int, (e->>'start_time')::time,
-           nullif(trim(e->>'location'), ''), (e->>'capacity')::int, case when (e->>'duration_minutes')::int is null or (e->>'duration_minutes')::int < 1 then 60 else (e->>'duration_minutes')::int end
+           nullif(trim(e->>'location'), ''), (e->>'capacity')::int, case when (e->>'duration_minutes')::int is null or (e->>'duration_minutes')::int < 1 then 60 else (e->>'duration_minutes')::int end,
+           coalesce((e->>'live')::boolean, true)
     from jsonb_array_elements(p_templates) as e;
   end if;
 end; $$;

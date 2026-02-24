@@ -15,6 +15,7 @@ export type ClassTemplate = {
   location?: string
   capacity?: number
   duration_minutes?: number
+  live?: boolean
 }
 
 export async function createTemplate(data: ClassTemplate) {
@@ -123,6 +124,7 @@ export async function updateTemplate(id: string, data: Partial<ClassTemplate>) {
   }
 
   revalidatePath('/admin/schedule')
+  revalidatePath('/')
   return { success: true }
 }
 
