@@ -72,7 +72,8 @@ create table public.attendance_logs (
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
   notes text,
-  locked boolean not null default false
+  locked boolean not null default false,
+  na_reason text check (na_reason is null or na_reason in ('no_show', 'cancelled'))
 );
 
 -- RLS

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { logAttendance } from '@/lib/actions/attendance'
-import { deleteOccurrence } from '@/lib/actions/dashboard'
 import { LOCKED_MESSAGE } from '@/lib/attendance-lock'
 import { AttendanceInput } from '@/components/AttendanceInput'
 
@@ -21,7 +20,6 @@ export function ClassCard({
   expanded = false,
   onExpandToggle,
   onSaved,
-  onDeleted,
   localHeadcount,
   viewOnly = false,
   status,
@@ -43,7 +41,6 @@ export function ClassCard({
   expanded?: boolean
   onExpandToggle?: () => void
   onSaved?: (headcount: number) => void
-  onDeleted?: () => void
   localHeadcount?: number
   viewOnly?: boolean
   status?: 'finished' | 'ongoing' | 'upcoming'
@@ -57,8 +54,6 @@ export function ClassCard({
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
   const [pendingHeadcount, setPendingHeadcount] = useState<number | null>(null)
   const [overrideCoachId, setOverrideCoachId] = useState<string>('')
 
@@ -111,18 +106,6 @@ export function ClassCard({
     submit(pendingHeadcount, true, createdBy)
   }
 
-  async function handleConfirmDelete() {
-    setDeleteLoading(true)
-    const result = await deleteOccurrence(occurrenceId)
-    setDeleteLoading(false)
-    setShowDeleteConfirm(false)
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-    onDeleted?.()
-  }
-
   const primaryLabel =
     isLockedNoAction
       ? null
@@ -148,37 +131,6 @@ export function ClassCard({
           className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md rounded-lg bg-amber-900 text-white px-4 py-3 text-sm shadow-lg"
         >
           {toast}
-        </div>
-      )}
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <p className="text-gray-900 font-medium mb-4">
-              Are you sure you want to delete this class?
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              This removes today&apos;s instance only. The class will still appear on other days.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleteLoading}
-                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleteLoading}
-                className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteLoading ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -280,16 +232,6 @@ export function ClassCard({
             <span className="mt-3 inline-flex items-center justify-center min-h-[44px] rounded-xl bg-blue-600 text-white font-semibold text-base w-full max-w-[200px]">
               {primaryLabel}
             </span>
-          )}
-          {isAdmin && onDeleted && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
-              className="mt-3 text-sm text-red-600 hover:text-red-800"
-              aria-label="Delete this class"
-            >
-              Delete this class
-            </button>
           )}
         </button>
 

@@ -15,6 +15,7 @@ import {
   getMissingLogs,
   getMissingLogsCount,
   getOverCapacityLogs,
+  getCancelledLogs,
   type DateRange,
 } from '@/lib/analytics'
 import { logAttendance } from '@/lib/actions/attendance'
@@ -343,17 +344,35 @@ export async function fetchOverCapacityLogs(range: DateRange) {
   return getOverCapacityLogs(range)
 }
 
+export async function fetchCancelledLogs(range: DateRange) {
+  await requireAdmin()
+  return getCancelledLogs(range)
+}
+
 export async function fetchMissingLogsCount(range: DateRange) {
   await requireAdmin()
   return getMissingLogsCount(range)
 }
 
-/** Mark a missing occurrence as N/A (headcount 0, notes "N/A (admin)"). Admin only, uses override. */
+/** Mark missing as "No one showed up" — headcount 0, counted in analytics. Admin only. */
 export async function markMissingAsNa(occurrenceId: string): Promise<{ error?: string }> {
   await requireAdmin()
   const result = await logAttendance(occurrenceId, 0, {
-    notes: 'N/A (admin)',
+    notes: 'N/A (admin) - no one showed up',
     adminOverride: true,
+    naReason: 'no_show',
+  })
+  if ('error' in result) return { error: result.error }
+  return {}
+}
+
+/** Mark missing as "Class cancelled" — not counted in analytics; shown in Alerts "Classes cancelled". Admin only. */
+export async function markMissingAsCancelled(occurrenceId: string): Promise<{ error?: string }> {
+  await requireAdmin()
+  const result = await logAttendance(occurrenceId, 0, {
+    notes: 'N/A (admin) - class cancelled',
+    adminOverride: true,
+    naReason: 'cancelled',
   })
   if ('error' in result) return { error: result.error }
   return {}

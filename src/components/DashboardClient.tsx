@@ -70,11 +70,6 @@ export function DashboardClient({
     router.refresh()
   }
 
-  async function handleDeleted() {
-    setToast('Class deleted')
-    router.refresh()
-  }
-
   return (
     <>
       {toast && (
@@ -175,7 +170,6 @@ export function DashboardClient({
             expanded={expandedId === card.occurrenceId}
             onExpandToggle={() => handleExpandToggle(card.occurrenceId)}
             onSaved={(headcount) => handleSaved(card.occurrenceId, headcount)}
-            onDeleted={isAdmin ? handleDeleted : undefined}
             localHeadcount={localHeadcounts[card.occurrenceId]}
             viewOnly={viewOnly}
             status={card.status}

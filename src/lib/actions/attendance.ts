@@ -16,7 +16,7 @@ export type LogAttendanceResult =
 export async function logAttendance(
   classOccurrenceId: string,
   headcount: number,
-  options?: { notes?: string; adminOverride?: boolean; createdByUserId?: string }
+  options?: { notes?: string; adminOverride?: boolean; createdByUserId?: string; naReason?: 'no_show' | 'cancelled' }
 ): Promise<LogAttendanceResult> {
   const supabase = await createClient()
 
@@ -86,6 +86,7 @@ export async function logAttendance(
         created_by: createdBy,
         created_by_name: createdByName,
         notes: options?.notes ?? null,
+        na_reason: options?.naReason ?? null,
       },
       { onConflict: 'class_occurrence_id' }
     )

@@ -93,11 +93,12 @@ export async function getSlotTimeSeries(
   const occIds = filtered.map((o: { id: string }) => o.id)
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -173,11 +174,12 @@ export async function getAvgAttendanceByProgram(range: DateRange): Promise<{
   const occIds = occs.map((o: { id: string }) => o.id)
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -241,11 +243,12 @@ export async function getWeeklyWeekdayAverages(
 
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -320,14 +323,15 @@ export async function getCoachPerformance(range: DateRange): Promise<{
 
   const { data: logs, error: logError } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount, created_by')
+    .select('class_occurrence_id, headcount, created_by, na_reason')
     .in('class_occurrence_id', occIds)
 
   if (logError) return { error: logError.message }
-  if (!logs?.length) return { data: [] }
+  const countedLogs = (logs ?? []).filter((l: { na_reason?: string | null }) => l.na_reason !== 'cancelled')
+  if (!countedLogs.length) return { data: [] }
 
   const occIdsSet = new Set(occIds)
-  const coachIds = [...new Set(logs.map((l: { created_by: string }) => l.created_by))]
+  const coachIds = [...new Set(countedLogs.map((l: { created_by: string }) => l.created_by))]
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name')
@@ -351,7 +355,7 @@ export async function getCoachPerformance(range: DateRange): Promise<{
   })
 
   const byCoach = new Map<string, { headcounts: number[]; programs: Set<string> }>()
-  logs.forEach((l: { created_by: string; headcount: number; class_occurrence_id: string }) => {
+  countedLogs.forEach((l: { created_by: string; headcount: number; class_occurrence_id: string }) => {
     if (!occIdsSet.has(l.class_occurrence_id)) return
     if (!byCoach.has(l.created_by)) {
       byCoach.set(l.created_by, { headcounts: [], programs: new Set() })
@@ -410,11 +414,12 @@ export async function getCapacityUtilization(
   const occIds = occs.map((o: { id: string }) => o.id)
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -539,11 +544,12 @@ export async function getLowAttendanceAlerts(range: DateRange): Promise<{
   const occIds = occs.map((o: { id: string }) => o.id)
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -725,11 +731,12 @@ export async function getOverCapacityLogs(range: DateRange): Promise<{
   const occIds = occs.map((o: { id: string }) => o.id)
   const { data: logs } = await supabase
     .from('attendance_logs')
-    .select('class_occurrence_id, headcount')
+    .select('class_occurrence_id, headcount, na_reason')
     .in('class_occurrence_id', occIds)
 
   const logByOcc = new Map<string, number>()
-  logs?.forEach((l: { class_occurrence_id: string; headcount: number }) => {
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
     logByOcc.set(l.class_occurrence_id, l.headcount)
   })
 
@@ -767,6 +774,65 @@ export async function getMissingLogsCount(range: DateRange): Promise<{ error?: s
   return { count: r.data?.length ?? 0 }
 }
 
+export type CancelledLogRow = {
+  occurrenceId: string
+  date: string
+  time: string
+  program: string
+  programLabel: string
+  title: string
+}
+
+/** Logs marked as "class cancelled" (na_reason = 'cancelled') in range. For Alerts "Classes cancelled" section. */
+export async function getCancelledLogs(range: DateRange): Promise<{
+  error?: string
+  data?: CancelledLogRow[]
+}> {
+  const supabase = await createClient()
+
+  const { data: occs, error: occError } = await supabase
+    .from('class_occurrences')
+    .select(`
+      id,
+      local_date,
+      class_templates!inner(program, title, start_time)
+    `)
+    .gte('local_date', range.startDate)
+    .lte('local_date', range.endDate)
+
+  if (occError) return { error: occError.message }
+  if (!occs?.length) return { data: [] }
+
+  const occIds = occs.map((o: { id: string }) => o.id)
+  const { data: logs } = await supabase
+    .from('attendance_logs')
+    .select('class_occurrence_id')
+    .in('class_occurrence_id', occIds)
+    .eq('na_reason', 'cancelled')
+
+  const cancelledOccIds = new Set((logs ?? []).map((l: { class_occurrence_id: string }) => l.class_occurrence_id))
+  const cancelledOccs = (occs as { id: string; local_date: string; class_templates: { program: string; title: string; start_time: string } | { program: string; title: string; start_time: string }[] }[]).filter((o) => cancelledOccIds.has(o.id))
+
+  type OccRow = {
+    id: string
+    local_date: string
+    class_templates: { program: string; title: string; start_time: string } | { program: string; title: string; start_time: string }[]
+  }
+  const data: CancelledLogRow[] = cancelledOccs.map((o: OccRow) => {
+    const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
+    return {
+      occurrenceId: o.id,
+      date: o.local_date,
+      time: String(t?.start_time ?? '').slice(0, 5),
+      program: t?.program ?? '',
+      programLabel: getProgramLabel(t?.program ?? ''),
+      title: t?.title ?? '',
+    }
+  })
+  data.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+  return { data }
+}
+
 export async function getOverview(range: DateRange): Promise<{
   error?: string
   totalOccurrences?: number
@@ -793,11 +859,11 @@ export async function getOverview(range: DateRange): Promise<{
   let totalLogged = 0
   let uniquePrograms = 0
   if (occIds.length > 0) {
-    const { count: logCount } = await supabase
+    const { data: logRows } = await supabase
       .from('attendance_logs')
-      .select('*', { count: 'exact', head: true })
+      .select('na_reason')
       .in('class_occurrence_id', occIds)
-    totalLogged = logCount ?? 0
+    totalLogged = (logRows ?? []).filter((r: { na_reason?: string | null }) => r.na_reason !== 'cancelled').length
 
     const { data: progData } = await supabase
       .from('class_occurrences')

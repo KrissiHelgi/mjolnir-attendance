@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow } from '@/lib/analytics'
+import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow, CancelledLogRow } from '@/lib/analytics'
 import type { MissingLog } from '@/lib/analytics'
 import type { ThresholdRow } from '@/lib/actions/analytics'
-import { getThresholds, updateThreshold, markMissingAsNa } from '@/lib/actions/analytics'
+import { getThresholds, updateThreshold, markMissingAsNa, markMissingAsCancelled } from '@/lib/actions/analytics'
+import { deleteOccurrence } from '@/lib/actions/dashboard'
 import { formatLocalDateLabel } from '@/lib/dates'
 
 type Props = {
@@ -12,11 +13,12 @@ type Props = {
   slotsWithRepeated: SlotLowCount[] | null
   missingLogs?: MissingLog[] | null
   overCapacity?: OverCapacityRow[] | null
+  cancelledLogs?: CancelledLogRow[] | null
   error?: string
   onMissingMarked?: () => void
 }
 
-export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapacity, error, onMissingMarked }: Props) {
+export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapacity, cancelledLogs, error, onMissingMarked }: Props) {
   const [thresholds, setThresholds] = useState<ThresholdRow[] | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<number>(0)
@@ -24,6 +26,8 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [expandedSlotId, setExpandedSlotId] = useState<string | null>(null)
   const [markingNa, setMarkingNa] = useState<string | null>(null)
+  const [naModalOccurrenceId, setNaModalOccurrenceId] = useState<string | null>(null)
+  const [naActionLoading, setNaActionLoading] = useState(false)
 
   useEffect(() => {
     getThresholds().then((r) => {
@@ -61,16 +65,30 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
     showToast('Threshold saved', 'success')
   }
 
-  async function handleMarkAsNa(occurrenceId: string) {
-    setMarkingNa(occurrenceId)
-    const r = await markMissingAsNa(occurrenceId)
-    setMarkingNa(null)
-    if (r.error) {
-      showToast(r.error, 'error')
-      return
+  function openMarkAsNaModal(occurrenceId: string) {
+    setNaModalOccurrenceId(occurrenceId)
+  }
+
+  async function handleNaChoice(choice: 'no_show' | 'not_running' | 'cancelled') {
+    if (!naModalOccurrenceId) return
+    setNaActionLoading(true)
+    setMarkingNa(naModalOccurrenceId)
+    let r: { error?: string }
+    if (choice === 'no_show') {
+      r = await markMissingAsNa(naModalOccurrenceId)
+      if (!r.error) showToast('Marked as no one showed up (counted as 0)', 'success')
+    } else if (choice === 'not_running') {
+      r = await deleteOccurrence(naModalOccurrenceId)
+      if (!r.error) showToast('Removed from schedule (not counted)', 'success')
+    } else {
+      r = await markMissingAsCancelled(naModalOccurrenceId)
+      if (!r.error) showToast('Marked as cancelled (shown in Classes cancelled)', 'success')
     }
-    showToast('Marked as N/A', 'success')
-    onMissingMarked?.()
+    setNaActionLoading(false)
+    setMarkingNa(null)
+    setNaModalOccurrenceId(null)
+    if (r?.error) showToast(r.error, 'error')
+    else onMissingMarked?.()
   }
 
   const alertsBySlot = useMemo(() => {
@@ -300,6 +318,39 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
         </div>
       )}
 
+      {cancelledLogs != null && (
+        <div id="alerts-cancelled">
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">Classes cancelled</h3>
+          <p className="text-xs text-gray-500 mb-2">Classes you marked as cancelled (on us). Not counted in utilization or averages.</p>
+          {!cancelledLogs.length ? (
+            <p className="text-gray-500 text-sm">None in this range.</p>
+          ) : (
+            <div className="overflow-x-auto max-h-72 overflow-y-auto border border-gray-200 rounded-lg">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 bg-gray-50">
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 px-2 font-medium text-gray-700">Date</th>
+                    <th className="text-left py-2 px-2 font-medium text-gray-700">Time</th>
+                    <th className="text-left py-2 px-2 font-medium text-gray-700">Program</th>
+                    <th className="text-left py-2 px-2 font-medium text-gray-700">Title</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cancelledLogs.map((row) => (
+                    <tr key={row.occurrenceId} className="border-b border-gray-100">
+                      <td className="py-2 px-2">{formatLocalDateLabel(row.date)}</td>
+                      <td className="py-2 px-2">{row.time}</td>
+                      <td className="py-2 px-2">{row.programLabel}</td>
+                      <td className="py-2 px-2 text-gray-600">{row.title}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {missingLogs != null && (
         <div id="alerts-missing">
           <h3 className="text-sm font-semibold text-gray-800 mb-2">Missing logs</h3>
@@ -329,7 +380,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
                           <td className="py-2 px-2 text-right">
                             <button
                               type="button"
-                              onClick={() => handleMarkAsNa(m.occurrenceId)}
+                              onClick={() => openMarkAsNaModal(m.occurrenceId)}
                               disabled={markingNa === m.occurrenceId}
                               className="min-h-[44px] px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-sm font-medium hover:bg-amber-200 disabled:opacity-50"
                             >
@@ -344,6 +395,49 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {naModalOccurrenceId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Mark as N/A</h3>
+            <p className="text-sm text-gray-600 mb-4">How should this missing class be handled?</p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleNaChoice('no_show')}
+                disabled={naActionLoading}
+                className="w-full min-h-[44px] px-4 py-2 rounded-lg border border-gray-200 bg-white text-left text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              >
+                1. No one showed up — counted as 0 in analytics
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNaChoice('not_running')}
+                disabled={naActionLoading}
+                className="w-full min-h-[44px] px-4 py-2 rounded-lg border border-gray-200 bg-white text-left text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              >
+                2. Class not running — removed from schedule (not counted)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNaChoice('cancelled')}
+                disabled={naActionLoading}
+                className="w-full min-h-[44px] px-4 py-2 rounded-lg border border-gray-200 bg-white text-left text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              >
+                3. Class cancelled (on us) — not counted; shown in Classes cancelled
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { if (!naActionLoading) setNaModalOccurrenceId(null) }}
+              disabled={naActionLoading}
+              className="mt-4 w-full min-h-[44px] px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

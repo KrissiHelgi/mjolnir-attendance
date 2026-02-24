@@ -22,6 +22,7 @@ import {
   fetchLowAttendanceAlerts,
   fetchMissingLogs,
   fetchOverCapacityLogs,
+  fetchCancelledLogs,
   getSlotOptions,
   exportAttendanceLogsCSV,
   exportSlotSummaryCSV,
@@ -73,6 +74,7 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [slotsRepeated, setSlotsRepeated] = useState<Awaited<ReturnType<typeof fetchLowAttendanceAlerts>>['slotsWithRepeated'] | null>(null)
   const [missingLogs, setMissingLogs] = useState<Awaited<ReturnType<typeof fetchMissingLogs>>['data'] | null>(null)
   const [overCapacity, setOverCapacity] = useState<Awaited<ReturnType<typeof fetchOverCapacityLogs>>['data'] | null>(null)
+  const [cancelledLogs, setCancelledLogs] = useState<Awaited<ReturnType<typeof fetchCancelledLogs>>['data'] | null>(null)
   const [alertsError, setAlertsError] = useState<string | null>(null)
   const [weeklyData, setWeeklyData] = useState<Awaited<ReturnType<typeof fetchWeeklyWeekdayAverages>>['data'] | null>(null)
   const [weeklyError, setWeeklyError] = useState<string | null>(null)
@@ -143,6 +145,8 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     if (!rMissing.error) setMissingLogs(rMissing.data ?? null)
     const rOver = await fetchOverCapacityLogs(range)
     if (!rOver.error) setOverCapacity(rOver.data ?? null)
+    const rCancelled = await fetchCancelledLogs(range)
+    if (!rCancelled.error) setCancelledLogs(rCancelled.data ?? null)
   }, [range.startDate, range.endDate])
 
   const loadWeekly = useCallback(async () => {
@@ -277,6 +281,7 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
             slotsWithRepeated={slotsRepeated ?? null}
             missingLogs={missingLogs ?? null}
             overCapacity={overCapacity ?? null}
+            cancelledLogs={cancelledLogs ?? null}
             error={alertsError ?? undefined}
             onMissingMarked={loadAlerts}
           />
