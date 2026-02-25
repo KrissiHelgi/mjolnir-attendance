@@ -40,7 +40,7 @@ export function CreateAccountForm() {
     const fd = new FormData()
     fd.set('email', email)
     fd.set('password', password)
-    await signIn(fd)
+    await signIn(null, fd)
     setSubmitting(false)
     router.push('/pending')
     router.refresh()
