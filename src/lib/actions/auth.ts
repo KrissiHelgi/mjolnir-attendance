@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export async function signIn(formData: FormData) {
+/** For use with useFormState: (prevState, formData). Returns { error } on auth failure. */
+export async function signIn(
+  _prevState: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string }> {
   const supabase = await createClient()
 
   const data = {
@@ -15,7 +19,7 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    return { error: error.message }
+    return { error: 'Wrong password or email' }
   }
 
   // Ensure profile exists and redirect pending users
