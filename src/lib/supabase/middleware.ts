@@ -58,7 +58,8 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPath =
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/request-access')
+    request.nextUrl.pathname.startsWith('/request-access') ||
+    request.nextUrl.pathname.startsWith('/auth/callback')
   if (!user && !isPublicPath && !request.nextUrl.pathname.startsWith('/_next')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

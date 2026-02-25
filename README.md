@@ -33,6 +33,13 @@ Set in `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Optional: `NEXT_PUBLIC_APP_URL` (production base URL for reset links; defaults to VERCEL_URL on Vercel, or `http://localhost:3000` locally)
+
+**Password reset links (“Copy reset link” in Admin → Coaches)**  
+For the link to work when a coach opens it, add these to **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**:
+
+- `http://localhost:3000/auth/callback` (local)
+- `https://<your-production-domain>/auth/callback` (e.g. `https://your-app.vercel.app/auth/callback`)
 
 ### 2. Database
 

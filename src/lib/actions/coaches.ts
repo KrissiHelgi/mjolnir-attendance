@@ -59,7 +59,7 @@ export async function updateCoachRole(
   return {}
 }
 
-/** Generate a password-reset link for the user. Super-admin only. */
+/** Generate a password-reset link for the user. Super-admin only. Link sends user to /auth/callback to complete reset. */
 export async function generateResetPasswordLink(
   email: string
 ): Promise<{ error: string } | { link: string }> {
@@ -70,9 +70,15 @@ export async function generateResetPasswordLink(
   } catch {
     return { error: 'Missing SUPABASE_SERVICE_ROLE_KEY.' }
   }
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+    'http://localhost:3000'
+  const redirectTo = `${baseUrl.replace(/\/$/, '')}/auth/callback`
   const { data, error } = await supabase.auth.admin.generateLink({
     type: 'recovery',
     email: email.trim(),
+    options: { redirectTo },
   })
   if (error) return { error: error.message }
   const link = data?.properties?.action_link

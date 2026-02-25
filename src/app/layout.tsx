@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 import { PendingGuard } from "@/components/PendingGuard";
+import { AuthHashHandler } from "@/components/AuthHashHandler";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/helpers";
 
@@ -33,6 +34,7 @@ export default async function RootLayout({
         <meta name="color-scheme" content="light" />
       </head>
       <body className="antialiased font-sans bg-gray-50">
+        <AuthHashHandler />
         {user && <PendingGuard role={profile?.role} />}
         {user && <Navigation />}
         <main className={user ? "max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" : ""}>
