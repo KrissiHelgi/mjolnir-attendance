@@ -10,7 +10,7 @@ export type LogAttendanceResult =
 
 /**
  * Single entry point for logging/updating attendance.
- * No log yet: lock 6h after class start. Already logged: lock 30 min after last save. Admins can override.
+ * No log yet: lock 24h after class start. Already logged: lock 2h after last save. Admins can override.
  * Logging only allowed once class has started (not upcoming).
  */
 export async function logAttendance(
