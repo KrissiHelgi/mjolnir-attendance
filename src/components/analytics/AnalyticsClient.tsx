@@ -10,6 +10,7 @@ import { UtilizationSection } from '@/components/analytics/UtilizationSection'
 import { AlertsSection } from '@/components/analytics/AlertsSection'
 import { ExportSection } from '@/components/analytics/ExportSection'
 import { WeeklySection } from '@/components/analytics/WeeklySection'
+import { LoggedClassesSection } from '@/components/analytics/LoggedClassesSection'
 import { getProgramKeys } from '@/lib/programs'
 import {
   fetchOverview,
@@ -23,6 +24,7 @@ import {
   fetchMissingLogs,
   fetchOverCapacityLogs,
   fetchCancelledLogs,
+  fetchLoggedClassesForDate,
   getSlotOptions,
   exportAttendanceLogsCSV,
   exportSlotSummaryCSV,
@@ -30,7 +32,7 @@ import {
 import type { DateRange } from '@/lib/analytics'
 import type { SlotOption } from '@/lib/actions/analytics'
 
-const TABS = ['Overview', 'Slots', 'Weekly', 'Coaches', 'Utilization', 'Alerts', 'Export'] as const
+const TABS = ['Overview', 'Slots', 'Weekly', 'Coaches', 'Utilization', 'Alerts', 'Logged classes', 'Export'] as const
 type Tab = (typeof TABS)[number]
 
 type Props = {
@@ -79,6 +81,9 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [weeklyData, setWeeklyData] = useState<Awaited<ReturnType<typeof fetchWeeklyWeekdayAverages>>['data'] | null>(null)
   const [weeklyError, setWeeklyError] = useState<string | null>(null)
   const [weeklyProgramFilter, setWeeklyProgramFilter] = useState('')
+  const [loggedClassesDate, setLoggedClassesDate] = useState(initialRange.endDate)
+  const [loggedClasses, setLoggedClasses] = useState<Awaited<ReturnType<typeof fetchLoggedClassesForDate>>['data'] | null>(null)
+  const [loggedClassesError, setLoggedClassesError] = useState<string | null>(null)
 
   const programKeys = getProgramKeys()
 
@@ -133,6 +138,13 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     if (!rSlot.error) setUtilSlot(rSlot.data ?? null)
   }, [range.startDate, range.endDate])
 
+  const loadLoggedClasses = useCallback(async () => {
+    setLoggedClassesError(null)
+    const r = await fetchLoggedClassesForDate(loggedClassesDate)
+    if (r.error) setLoggedClassesError(r.error)
+    else setLoggedClasses(r.data ?? null)
+  }, [loggedClassesDate])
+
   const loadAlerts = useCallback(async () => {
     setAlertsError(null)
     const r = await fetchLowAttendanceAlerts(range)
@@ -184,6 +196,9 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   useEffect(() => {
     if (activeTab === 'Alerts') loadAlerts()
   }, [activeTab, loadAlerts])
+  useEffect(() => {
+    if (activeTab === 'Logged classes') loadLoggedClasses()
+  }, [activeTab, loggedClassesDate, loadLoggedClasses])
   useEffect(() => {
     if (activeTab === 'Weekly') loadWeekly()
   }, [activeTab, weeklyProgramFilter, loadWeekly])
@@ -284,6 +299,15 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
             cancelledLogs={cancelledLogs ?? null}
             error={alertsError ?? undefined}
             onMissingMarked={loadAlerts}
+          />
+        )}
+        {activeTab === 'Logged classes' && (
+          <LoggedClassesSection
+            selectedDate={loggedClassesDate}
+            onDateChange={setLoggedClassesDate}
+            data={loggedClasses ?? null}
+            error={loggedClassesError ?? undefined}
+            onDeleted={loadLoggedClasses}
           />
         )}
         {activeTab === 'Export' && (

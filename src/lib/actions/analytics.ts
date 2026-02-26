@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/helpers'
 import { getProgramLabel } from '@/lib/programs'
+import { revalidatePath } from 'next/cache'
 import {
   defaultDateRange,
   getOverview,
@@ -16,6 +17,7 @@ import {
   getMissingLogsCount,
   getOverCapacityLogs,
   getCancelledLogs,
+  getLoggedClassesForDate,
   type DateRange,
 } from '@/lib/analytics'
 import { logAttendance } from '@/lib/actions/attendance'
@@ -339,6 +341,22 @@ export async function fetchOverCapacityLogs(range: DateRange) {
 export async function fetchCancelledLogs(range: DateRange) {
   await requireAdmin()
   return getCancelledLogs(range)
+}
+
+export async function fetchLoggedClassesForDate(localDate: string) {
+  await requireAdmin()
+  return getLoggedClassesForDate(localDate)
+}
+
+/** Remove one attendance log (e.g. mistaken headcount). Admin only. That class will no longer count in analytics. */
+export async function deleteAttendanceLog(logId: string): Promise<{ error?: string }> {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase.from('attendance_logs').delete().eq('id', logId)
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  revalidatePath('/admin/analytics')
+  return {}
 }
 
 export async function fetchMissingLogsCount(range: DateRange) {

@@ -882,3 +882,74 @@ export async function getOverview(range: DateRange): Promise<{
     uniquePrograms,
   }
 }
+
+export type LoggedClassRow = {
+  logId: string
+  occurrenceId: string
+  date: string
+  time: string
+  program: string
+  programLabel: string
+  title: string
+  headcount: number
+  loggedByName: string | null
+  loggedAt: string
+}
+
+/** Logs that affect analytics (counted in Overview etc.) for one day. Excludes na_reason = 'cancelled'. */
+export async function getLoggedClassesForDate(localDate: string): Promise<{
+  error?: string
+  data?: LoggedClassRow[]
+}> {
+  const supabase = await createClient()
+
+  const { data: occs, error: occError } = await supabase
+    .from('class_occurrences')
+    .select(`
+      id,
+      class_templates!inner(program, title, start_time)
+    `)
+    .eq('local_date', localDate)
+
+  if (occError) return { error: occError.message }
+  if (!occs?.length) return { data: [] }
+
+  const occIds = occs.map((o: { id: string }) => o.id)
+  const { data: logs, error: logError } = await supabase
+    .from('attendance_logs')
+    .select('id, class_occurrence_id, headcount, created_by_name, updated_at, na_reason')
+    .in('class_occurrence_id', occIds)
+
+  if (logError) return { error: logError.message }
+  const counted = (logs ?? []).filter((l: { na_reason?: string | null }) => l.na_reason !== 'cancelled')
+  if (!counted.length) return { data: [] }
+
+  type OccRow = {
+    id: string
+    class_templates: { program: string; title: string; start_time: string } | { program: string; title: string; start_time: string }[]
+  }
+  const occById = new Map<string, OccRow>()
+  occs.forEach((o: OccRow) => occById.set(o.id, o))
+
+  const data: LoggedClassRow[] = counted.map((l: { id: string; class_occurrence_id: string; headcount: number; created_by_name: string | null; updated_at: string }) => {
+    const occ = occById.get(l.class_occurrence_id)
+    const t = occ && (Array.isArray(occ.class_templates) ? occ.class_templates[0] : occ.class_templates)
+    const time = t ? String(t.start_time).slice(0, 5) : ''
+    const program = t?.program ?? ''
+    const title = t?.title ?? ''
+    return {
+      logId: l.id,
+      occurrenceId: l.class_occurrence_id,
+      date: localDate,
+      time,
+      program,
+      programLabel: getProgramLabel(program),
+      title,
+      headcount: l.headcount,
+      loggedByName: l.created_by_name ?? null,
+      loggedAt: l.updated_at,
+    }
+  })
+  data.sort((a, b) => a.time.localeCompare(b.time) || a.title.localeCompare(b.title))
+  return { data }
+}
