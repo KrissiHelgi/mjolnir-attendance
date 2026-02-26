@@ -12,7 +12,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import type { WeeklyWeekdayRow } from '@/lib/analytics'
+import type { WeeklyWeekdayRow, TotalAttendanceByProgramRow } from '@/lib/analytics'
 
 const COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#ea580c', '#4f46e5', '#0d9488', '#ca8a04']
 
@@ -21,6 +21,8 @@ type Props = {
   programKeys: string[]
   programFilter: string
   onProgramFilterChange: (v: string) => void
+  totalByProgram: TotalAttendanceByProgramRow[] | null
+  totalByProgramError?: string
   error?: string
 }
 
@@ -29,6 +31,8 @@ export function WeeklySection({
   programKeys,
   programFilter,
   onProgramFilterChange,
+  totalByProgram,
+  totalByProgramError,
   error,
 }: Props) {
   const programKeysInData = useMemo(() => {
@@ -98,6 +102,37 @@ export function WeeklySection({
           </ResponsiveContainer>
         </div>
       )}
+
+      <div className="border-t border-gray-200 pt-6 mt-6">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Total attendance by program (selected period)</h3>
+        {totalByProgramError && (
+          <p className="text-sm text-red-600 mb-2">{totalByProgramError}</p>
+        )}
+        {!totalByProgram?.length && !totalByProgramError ? (
+          <p className="text-gray-500 text-sm">No attendance data for this period.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-600">
+                  <th className="py-2 pr-4 font-medium">Program</th>
+                  <th className="py-2 pr-4 font-medium text-right">Total attendance</th>
+                  <th className="py-2 font-medium text-right">Classes logged</th>
+                </tr>
+              </thead>
+              <tbody>
+                {totalByProgram?.map((row) => (
+                  <tr key={row.program} className="border-b border-gray-100">
+                    <td className="py-2 pr-4 text-gray-900">{row.programLabel}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{row.totalHeadcount.toLocaleString()}</td>
+                    <td className="py-2 text-right tabular-nums">{row.occurrenceCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

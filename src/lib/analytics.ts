@@ -210,6 +210,67 @@ export async function getAvgAttendanceByProgram(range: DateRange): Promise<{
   return { data }
 }
 
+export type TotalAttendanceByProgramRow = {
+  program: string
+  programLabel: string
+  totalHeadcount: number
+  occurrenceCount: number
+}
+
+/** Total attendance (sum of headcount) per program in the date range. Excludes cancelled. */
+export async function getTotalAttendanceByProgram(range: DateRange): Promise<{
+  error?: string
+  data?: TotalAttendanceByProgramRow[]
+}> {
+  const supabase = await createClient()
+
+  const { data: occs, error: occError } = await supabase
+    .from('class_occurrences')
+    .select('id, class_templates!inner(program)')
+    .gte('local_date', range.startDate)
+    .lte('local_date', range.endDate)
+
+  if (occError) return { error: occError.message }
+  if (!occs?.length) return { data: [] }
+
+  const occIds = occs.map((o: { id: string }) => o.id)
+  const { data: logs } = await supabase
+    .from('attendance_logs')
+    .select('class_occurrence_id, headcount, na_reason')
+    .in('class_occurrence_id', occIds)
+
+  const logByOcc = new Map<string, number>()
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
+    logByOcc.set(l.class_occurrence_id, l.headcount)
+  })
+
+  type Row = { id: string; class_templates: { program: string } | { program: string }[] }
+  const byProgram = new Map<string, number[]>()
+  occs.forEach((o: Row) => {
+    const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
+    const program = t?.program
+    if (!program) return
+    const h = logByOcc.get(o.id)
+    if (h === undefined) return
+    if (!byProgram.has(program)) byProgram.set(program, [])
+    byProgram.get(program)!.push(h)
+  })
+
+  const data: TotalAttendanceByProgramRow[] = []
+  byProgram.forEach((headcounts, program) => {
+    const totalHeadcount = headcounts.reduce((a, b) => a + b, 0)
+    data.push({
+      program,
+      programLabel: getProgramLabel(program),
+      totalHeadcount,
+      occurrenceCount: headcounts.length,
+    })
+  })
+  data.sort((a, b) => b.totalHeadcount - a.totalHeadcount)
+  return { data }
+}
+
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 /** Display order Mon–Sun for chart X axis */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const

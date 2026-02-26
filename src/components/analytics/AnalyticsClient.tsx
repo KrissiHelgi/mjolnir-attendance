@@ -17,6 +17,7 @@ import {
   fetchSlotTimeSeries,
   fetchAvgByProgram,
   fetchWeeklyWeekdayAverages,
+  fetchTotalAttendanceByProgram,
   fetchCoachPerformance,
   fetchCapacityUtilization,
   fetchCapacityUtilizationBySlot,
@@ -81,6 +82,8 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [weeklyData, setWeeklyData] = useState<Awaited<ReturnType<typeof fetchWeeklyWeekdayAverages>>['data'] | null>(null)
   const [weeklyError, setWeeklyError] = useState<string | null>(null)
   const [weeklyProgramFilter, setWeeklyProgramFilter] = useState('')
+  const [totalByProgram, setTotalByProgram] = useState<Awaited<ReturnType<typeof fetchTotalAttendanceByProgram>>['data'] | null>(null)
+  const [totalByProgramError, setTotalByProgramError] = useState<string | null>(null)
   const [loggedClassesDate, setLoggedClassesDate] = useState(initialRange.endDate)
   const [loggedClasses, setLoggedClasses] = useState<Awaited<ReturnType<typeof fetchLoggedClassesForDate>>['data'] | null>(null)
   const [loggedClassesError, setLoggedClassesError] = useState<string | null>(null)
@@ -168,6 +171,13 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     else setWeeklyData(r.data ?? null)
   }, [range.startDate, range.endDate, weeklyProgramFilter])
 
+  const loadTotalByProgram = useCallback(async () => {
+    setTotalByProgramError(null)
+    const r = await fetchTotalAttendanceByProgram(range)
+    if (r.error) setTotalByProgramError(r.error)
+    else setTotalByProgram(r.data ?? null)
+  }, [range.startDate, range.endDate])
+
   useEffect(() => {
     loadOverview()
     loadProgramAvg()
@@ -200,8 +210,11 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     if (activeTab === 'Logged classes') loadLoggedClasses()
   }, [activeTab, loggedClassesDate, loadLoggedClasses])
   useEffect(() => {
-    if (activeTab === 'Weekly') loadWeekly()
-  }, [activeTab, weeklyProgramFilter, loadWeekly])
+    if (activeTab === 'Weekly') {
+      loadWeekly()
+      loadTotalByProgram()
+    }
+  }, [activeTab, weeklyProgramFilter, loadWeekly, loadTotalByProgram])
 
   useEffect(() => {
     if (activeTab === 'Alerts' && scrollToMissing) {
@@ -261,6 +274,8 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
             programKeys={programKeys}
             programFilter={weeklyProgramFilter}
             onProgramFilterChange={setWeeklyProgramFilter}
+            totalByProgram={totalByProgram ?? null}
+            totalByProgramError={totalByProgramError ?? undefined}
             error={weeklyError ?? undefined}
           />
         )}
