@@ -205,7 +205,7 @@ export async function getAvgAttendanceByProgram(range: DateRange): Promise<{
       occurrenceCount: headcounts.length,
     })
   })
-  data.sort((a, b) => a.program.localeCompare(b.program))
+  data.sort((a, b) => b.avgHeadcount - a.avgHeadcount)
   return { data }
 }
 
