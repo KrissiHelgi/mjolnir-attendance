@@ -60,36 +60,28 @@ export async function updateThreshold(
   return {}
 }
 
-/** List slots (templates) that have occurrences in range, for filter dropdown. */
+/** List slots = one class each: "Title - Weekday - Time", from schedule (class_templates). */
 export type SlotOption = { templateId: string; label: string; program: string }
 
-export async function getSlotOptions(range: DateRange): Promise<{
+export async function getSlotOptions(_range: DateRange): Promise<{
   error?: string
   data?: SlotOption[]
 }> {
   await requireAdmin()
   const supabase = await createClient()
-  const { data: occs, error } = await supabase
-    .from('class_occurrences')
-    .select('class_template_id, class_templates!inner(program, start_time)')
-    .gte('local_date', range.startDate)
-    .lte('local_date', range.endDate)
+  const { data: templates, error } = await supabase
+    .from('class_templates')
+    .select('id, program, title, start_time, weekday')
+    .eq('live', true)
+    .order('weekday')
+    .order('start_time')
   if (error) return { error: error.message }
-  const seen = new Set<string>()
-  const out: SlotOption[] = []
-  type Row = { class_template_id: string; class_templates: { program: string; start_time: string } | { program: string; start_time: string }[] }
-  occs?.forEach((o: Row) => {
-    const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
-    if (!t || seen.has(o.class_template_id)) return
-    seen.add(o.class_template_id)
+  const { getWeekdayLabel } = await import('@/lib/class-titles')
+  const out: SlotOption[] = (templates ?? []).map((t: { id: string; program: string; title: string; start_time: string; weekday: number }) => {
     const time = String(t.start_time).slice(0, 5)
-    out.push({
-      templateId: o.class_template_id,
-      program: t.program,
-      label: `${getProgramLabel(t.program)} ${time}`,
-    })
+    const label = `${t.title} - ${getWeekdayLabel(t.weekday)} - ${time}`
+    return { templateId: t.id, program: t.program, label }
   })
-  out.sort((a, b) => a.label.localeCompare(b.label))
   return { data: out }
 }
 

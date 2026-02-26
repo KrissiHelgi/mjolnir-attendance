@@ -53,6 +53,13 @@ export function SlotsSection({
 
   const slotLabels = useMemo(() => [...new Set(data?.map((d) => d.slotLabel) ?? [])], [data])
   const colors = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2']
+  const slotsForProgram = useMemo(
+    () =>
+      !programFilter
+        ? slotOptions ?? []
+        : (slotOptions ?? []).filter((s) => s.program === programFilter),
+    [slotOptions, programFilter]
+  )
 
   return (
     <div className="space-y-4">
@@ -61,7 +68,10 @@ export function SlotsSection({
           <span className="text-sm text-gray-600">Program</span>
           <select
             value={programFilter}
-            onChange={(e) => onProgramFilterChange(e.target.value)}
+            onChange={(e) => {
+              onProgramFilterChange(e.target.value)
+              onSlotFilterChange('')
+            }}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">All</option>
@@ -75,12 +85,12 @@ export function SlotsSection({
         <label className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Slot</span>
           <select
-            value={slotFilter}
+            value={slotsForProgram.some((s) => s.templateId === slotFilter) ? slotFilter : ''}
             onChange={(e) => onSlotFilterChange(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm min-w-[180px]"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm min-w-[220px]"
           >
             <option value="">All</option>
-            {slotOptions?.map((s) => (
+            {slotsForProgram.map((s) => (
               <option key={s.templateId} value={s.templateId}>
                 {s.label}
               </option>

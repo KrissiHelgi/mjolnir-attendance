@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getProgramLabel } from '@/lib/programs'
+import { getWeekdayLabel } from '@/lib/class-titles'
 
 export type DateRange = { startDate: string; endDate: string }
 
@@ -122,7 +123,7 @@ export async function getSlotTimeSeries(
     const startTime = String(t.start_time).slice(0, 5)
     slotMeta.set(o.class_template_id, {
       program: t.program,
-      label: `${getProgramLabel(t.program)} ${startTime}`,
+      label: `${t.title} - ${getWeekdayLabel(t.weekday)} - ${startTime}`,
     })
   })
 
