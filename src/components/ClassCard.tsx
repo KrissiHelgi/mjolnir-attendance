@@ -86,7 +86,7 @@ export function ClassCard({
       setPendingHeadcount(null)
       setOverrideCoachId('')
       onSaved?.(headcountNum)
-      onExpandToggle?.()
+      // Parent handleSaved already sets expandedId(null) so card closes with the toast
     } finally {
       submittingRef.current = false
       setLoading(false)

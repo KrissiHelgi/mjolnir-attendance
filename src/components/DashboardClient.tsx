@@ -118,10 +118,11 @@ export function DashboardClient({
   }
 
   function handleSaved(occurrenceId: string, headcount: number) {
-    setExpandedId(null) // Close card immediately so it's clear attendance was saved
+    setExpandedId(null) // Close card so it shows "Edit attendance" like other logged cards
     setLocalHeadcounts((prev) => ({ ...prev, [occurrenceId]: headcount }))
     setToast('Attendance saved')
-    requestAnimationFrame(() => router.refresh())
+    // Defer refresh so user sees closed card + toast together first
+    setTimeout(() => router.refresh(), 80)
   }
 
   return (
