@@ -31,7 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   let cards: Array<{
     occurrenceId: string
     startsAt: string
-    endsAt: string
+    endsAt?: string
     programLabel: string
     title: string
     time: string
@@ -39,6 +39,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     capacity?: number
     headcount?: number
     loggedByName?: string
+    updatedAt?: string
     locked: boolean
     canEdit: boolean
     showOverride: boolean
