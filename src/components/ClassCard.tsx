@@ -236,7 +236,15 @@ export function ClassCard({
             )}
           </div>
           {!expanded && primaryLabel && (
-            <span className="mt-3 inline-flex items-center justify-center min-h-[44px] rounded-xl bg-blue-600 text-white font-semibold text-base w-full max-w-[200px]">
+            <span
+              className={`mt-3 inline-flex items-center justify-center min-h-[44px] rounded-xl font-semibold text-base w-full max-w-[200px] ${
+                primaryLabel === 'Log attendance'
+                  ? 'bg-blue-600 text-white'
+                  : primaryLabel === 'Override edit'
+                    ? 'bg-amber-100 text-amber-900 border-2 border-amber-400'
+                    : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
+              }`}
+            >
               {primaryLabel}
             </span>
           )}
