@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ClassCard } from '@/components/ClassCard'
 import { addDaysToLocalDate, formatLocalDateLabelWithWeekday } from '@/lib/dates'
+import { canEditAttendance } from '@/lib/attendance-lock'
 
 export type DashboardCard = {
   occurrenceId: string
@@ -17,6 +18,8 @@ export type DashboardCard = {
   capacity?: number
   headcount?: number
   loggedByName?: string
+  /** When set, used with startsAt for client-side lock/canEdit recompute as time passes */
+  updatedAt?: string
   locked: boolean
   canEdit: boolean
   showOverride: boolean
@@ -51,7 +54,58 @@ export function DashboardClient({
   const [showAllClasses, setShowAllClasses] = useState(
     initialCards.length === 0 && (allCards?.length ?? 0) > 0
   )
-  const cardsToShow = showAllClasses && allCards && allCards.length > 0 ? allCards : initialCards
+  const baseCards = showAllClasses && allCards && allCards.length > 0 ? allCards : initialCards
+
+  // Live "now" so classes move from upcoming → ongoing → finished without refresh (e.g. coach logs one class then the next appears as ongoing)
+  const [liveNow, setLiveNow] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setLiveNow(Date.now()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') setLiveNow(Date.now())
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  const cardsToShow = useMemo(() => {
+    const now = liveNow
+    type S = 'finished' | 'ongoing' | 'upcoming'
+    const derived: DashboardCard[] = baseCards.map((card) => {
+      if (viewOnly) return card
+      const startMs = new Date(card.startsAt).getTime()
+      const endMs = card.endsAt ? new Date(card.endsAt).getTime() : startMs + 60 * 60 * 1000
+      let status: S
+      let finishedMinutesAgo: number | undefined
+      if (now < startMs) status = 'upcoming'
+      else if (now < endMs) status = 'ongoing'
+      else {
+        status = 'finished'
+        finishedMinutesAgo = Math.floor((now - endMs) / 60000)
+      }
+      const editState =
+        status === 'upcoming'
+          ? { locked: true, allowed: false }
+          : canEditAttendance(isAdmin, card.startsAt, card.updatedAt ?? null)
+      return {
+        ...card,
+        status,
+        finishedMinutesAgo,
+        locked: editState.locked,
+        canEdit: editState.allowed,
+        showOverride: editState.locked && editState.allowed && 'isOverride' in editState,
+      }
+    })
+    const order = { finished: 0, ongoing: 1, upcoming: 2 }
+    derived.sort((a, b) => {
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+      if (a.status === 'finished') return (b.finishedMinutesAgo ?? 0) - (a.finishedMinutesAgo ?? 0)
+      return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+    })
+    return derived
+  }, [baseCards, liveNow, isAdmin, viewOnly])
 
   useEffect(() => {
     if (!toast) return

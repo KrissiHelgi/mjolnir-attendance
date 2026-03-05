@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { logAttendance } from '@/lib/actions/attendance'
 import { LOCKED_MESSAGE } from '@/lib/attendance-lock'
 import { AttendanceInput } from '@/components/AttendanceInput'
@@ -56,6 +56,7 @@ export function ClassCard({
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
   const [pendingHeadcount, setPendingHeadcount] = useState<number | null>(null)
   const [overrideCoachId, setOverrideCoachId] = useState<string>('')
+  const submittingRef = useRef(false)
 
   useEffect(() => {
     if (!toast) return
@@ -70,20 +71,26 @@ export function ClassCard({
   const isLockedNoAction = viewOnly || (locked && !canEdit)
 
   async function submit(headcountNum: number, adminOverride?: boolean, createdByUserId?: string) {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setLoading(true)
     setError(null)
-    const result = await logAttendance(occurrenceId, headcountNum, { adminOverride, createdByUserId })
-    setLoading(false)
-    if ('error' in result && result.error) {
-      if (result.code === 'LOCKED') setToast(LOCKED_MESSAGE)
-      setError(result.error)
-      return
+    try {
+      const result = await logAttendance(occurrenceId, headcountNum, { adminOverride, createdByUserId })
+      if ('error' in result && result.error) {
+        if (result.code === 'LOCKED') setToast(LOCKED_MESSAGE)
+        setError(result.error)
+        return
+      }
+      setShowOverrideConfirm(false)
+      setPendingHeadcount(null)
+      setOverrideCoachId('')
+      onSaved?.(headcountNum)
+      onExpandToggle?.()
+    } finally {
+      submittingRef.current = false
+      setLoading(false)
     }
-    setShowOverrideConfirm(false)
-    setPendingHeadcount(null)
-    setOverrideCoachId('')
-    onSaved?.(headcountNum)
-    onExpandToggle?.()
   }
 
   function handleSave(value: number) {

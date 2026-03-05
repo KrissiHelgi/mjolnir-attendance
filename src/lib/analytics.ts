@@ -631,8 +631,8 @@ export async function getLowAttendanceAlerts(range: DateRange): Promise<{
     if (headcount === undefined) return
     const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
     if (!t) return
-    // Use program threshold if set; otherwise treat as min 1 so headcount 0 still shows as low attendance
-    const minH = thByProgram.get(t.program) ?? 1
+    const minH = thByProgram.get(t.program)
+    if (minH === undefined) return
     if (headcount >= minH) return
 
     const timeStr = String(t.start_time).slice(0, 5)
