@@ -76,7 +76,7 @@ export function CourseSection({
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
                   labelStyle={{ color: '#111' }}
-                  formatter={(value: number) => [value, 'Attendance']}
+                  formatter={(value: number | undefined) => [value ?? 0, 'Attendance']}
                   labelFormatter={(_, payload) => {
                     const p = payload?.[0]?.payload as { sessionLabel: string; date: string } | undefined
                     return p ? `${p.sessionLabel} (${p.date})` : ''
