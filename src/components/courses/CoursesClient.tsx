@@ -6,6 +6,8 @@ import { getProgramLabel } from '@/lib/programs'
 import { getWeekdayLabel } from '@/lib/class-titles'
 import {
   createCourse,
+  updateCourse,
+  deleteCourse,
   addSessionsToCourse,
   listCourseSessions,
   listTemplatesForCoursePicker,
@@ -31,6 +33,15 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set())
   const [addSessionsLoading, setAddSessionsLoading] = useState(false)
   const [addSessionsError, setAddSessionsError] = useState<string | null>(null)
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editProgram, setEditProgram] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -103,6 +114,46 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
       if (r2.data) setSessions(r2.data)
     }
     router.refresh()
+  }
+
+  function openEditModal(course: Course) {
+    setEditingCourse(course)
+    setEditName(course.name)
+    setEditProgram(course.program ?? '')
+    setEditStartDate(course.start_date)
+    setEditEndDate(course.end_date)
+    setEditError(null)
+  }
+
+  async function handleEditSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingCourse) return
+    setEditError(null)
+    setEditLoading(true)
+    const r = await updateCourse(editingCourse.id, {
+      name: editName.trim(),
+      program: editProgram.trim() || null,
+      start_date: editStartDate,
+      end_date: editEndDate,
+    })
+    setEditLoading(false)
+    if (r.error) {
+      setEditError(r.error)
+      return
+    }
+    setEditingCourse(null)
+    router.refresh()
+  }
+
+  async function handleDeleteConfirm(courseId: string) {
+    setDeleteLoading(true)
+    const r = await deleteCourse(courseId)
+    setDeleteLoading(false)
+    if (!r.error) {
+      setDeletingCourseId(null)
+      if (expandedId === courseId) setExpandedId(null)
+      router.refresh()
+    }
   }
 
   return (
@@ -203,7 +254,7 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
                       {course.start_date} – {course.end_date}
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => toggleSessions(course.id)}
@@ -213,10 +264,24 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
                     </button>
                     <button
                       type="button"
+                      onClick={() => openEditModal(course)}
+                      className="min-h-[40px] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => openAddModal(course.id)}
                       className="min-h-[40px] px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
                     >
                       Add sessions
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingCourseId(course.id)}
+                      className="min-h-[40px] px-3 py-2 rounded-lg border border-red-200 bg-white text-sm font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -267,6 +332,103 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
           </ul>
         )}
       </div>
+
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit course</h3>
+            <form onSubmit={handleEditSave} className="space-y-4">
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program (optional)</label>
+                <input
+                  type="text"
+                  value={editProgram}
+                  onChange={(e) => setEditProgram(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+                  <input
+                    type="date"
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+                  <input
+                    type="date"
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="min-h-[44px] px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50"
+                >
+                  {editLoading ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deletingCourseId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900">Delete this course?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              The course will be removed. Sessions linked to it will be unlinked (they stay in the schedule). This cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeletingCourseId(null)}
+                disabled={deleteLoading}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteConfirm(deletingCourseId)}
+                disabled={deleteLoading}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {addModalCourseId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
