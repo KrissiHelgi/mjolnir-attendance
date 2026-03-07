@@ -1014,3 +1014,107 @@ export async function getLoggedClassesForDate(localDate: string): Promise<{
   data.sort((a, b) => a.time.localeCompare(b.time) || a.title.localeCompare(b.title))
   return { data }
 }
+
+export type CourseAttendanceWeekRow = {
+  weekNumber: number
+  weekLabel: string
+  totalHeadcount: number
+  sessionCount: number
+  loggedCount: number
+}
+
+export type CourseAttendanceResult = {
+  courseId: string
+  courseName: string
+  startDate: string
+  endDate: string
+  byWeek: CourseAttendanceWeekRow[]
+}
+
+/** Attendance for a course, grouped by week of course (week 1, 2, …). Excludes cancelled. */
+export async function getCourseAttendance(courseId: string): Promise<{
+  error?: string
+  data?: CourseAttendanceResult
+}> {
+  const supabase = await createClient()
+
+  const { data: course, error: courseErr } = await supabase
+    .from('courses')
+    .select('id, name, start_date, end_date')
+    .eq('id', courseId)
+    .single()
+
+  if (courseErr || !course) return { error: courseErr?.message ?? 'Course not found' }
+
+  const startDate = (course as { start_date: string }).start_date
+  const endDate = (course as { end_date: string }).end_date
+
+  const { data: occs, error: occErr } = await supabase
+    .from('class_occurrences')
+    .select('id, local_date')
+    .eq('course_id', courseId)
+    .order('local_date')
+
+  if (occErr) return { error: occErr.message }
+  if (!occs?.length) {
+    return {
+      data: {
+        courseId,
+        courseName: (course as { name: string }).name,
+        startDate,
+        endDate,
+        byWeek: [],
+      },
+    }
+  }
+
+  const occIds = occs.map((o: { id: string }) => o.id)
+  const { data: logs } = await supabase
+    .from('attendance_logs')
+    .select('class_occurrence_id, headcount, na_reason')
+    .in('class_occurrence_id', occIds)
+
+  const logByOcc = new Map<string, number>()
+  logs?.forEach((l: { class_occurrence_id: string; headcount: number; na_reason?: string | null }) => {
+    if (l.na_reason === 'cancelled') return
+    logByOcc.set(l.class_occurrence_id, l.headcount)
+  })
+
+  const startMs = new Date(startDate + 'T12:00:00Z').getTime()
+  const byWeek = new Map<number, { totalHeadcount: number; sessionCount: number; loggedCount: number }>()
+
+  occs.forEach((o: { id: string; local_date: string }) => {
+    const dateMs = new Date(o.local_date + 'T12:00:00Z').getTime()
+    const weekNumber = Math.floor((dateMs - startMs) / (7 * 24 * 60 * 60 * 1000)) + 1
+    if (!byWeek.has(weekNumber)) byWeek.set(weekNumber, { totalHeadcount: 0, sessionCount: 0, loggedCount: 0 })
+    const row = byWeek.get(weekNumber)!
+    row.sessionCount++
+    const h = logByOcc.get(o.id)
+    if (h !== undefined) {
+      row.loggedCount++
+      row.totalHeadcount += h
+    }
+  })
+
+  const byWeekSorted: CourseAttendanceWeekRow[] = []
+  byWeek.forEach((v, weekNumber) => {
+    byWeekSorted.push({
+      weekNumber,
+      weekLabel: `Week ${weekNumber}`,
+      totalHeadcount: v.totalHeadcount,
+      sessionCount: v.sessionCount,
+      loggedCount: v.loggedCount,
+    })
+  })
+  byWeekSorted.sort((a, b) => a.weekNumber - b.weekNumber)
+
+  return {
+    data: {
+      courseId,
+      courseName: (course as { name: string }).name,
+      startDate,
+      endDate,
+      byWeek: byWeekSorted,
+    },
+  }
+}

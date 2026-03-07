@@ -11,6 +11,7 @@ import { AlertsSection } from '@/components/analytics/AlertsSection'
 import { ExportSection } from '@/components/analytics/ExportSection'
 import { WeeklySection } from '@/components/analytics/WeeklySection'
 import { LoggedClassesSection } from '@/components/analytics/LoggedClassesSection'
+import { CourseSection } from '@/components/analytics/CourseSection'
 import { getProgramKeys } from '@/lib/programs'
 import {
   fetchOverview,
@@ -26,14 +27,16 @@ import {
   fetchOverCapacityLogs,
   fetchCancelledLogs,
   fetchLoggedClassesForDate,
+  fetchCourseAttendance,
   getSlotOptions,
   exportAttendanceLogsCSV,
   exportSlotSummaryCSV,
 } from '@/lib/actions/analytics'
+import { listCourses } from '@/lib/actions/courses'
 import type { DateRange } from '@/lib/analytics'
 import type { SlotOption } from '@/lib/actions/analytics'
 
-const TABS = ['Overview', 'Slots', 'Weekly', 'Coaches', 'Utilization', 'Alerts', 'Logged classes', 'Export'] as const
+const TABS = ['Overview', 'Slots', 'Weekly', 'Course', 'Coaches', 'Utilization', 'Alerts', 'Logged classes', 'Export'] as const
 type Tab = (typeof TABS)[number]
 
 type Props = {
@@ -87,6 +90,10 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   const [loggedClassesDate, setLoggedClassesDate] = useState(initialRange.endDate)
   const [loggedClasses, setLoggedClasses] = useState<Awaited<ReturnType<typeof fetchLoggedClassesForDate>>['data'] | null>(null)
   const [loggedClassesError, setLoggedClassesError] = useState<string | null>(null)
+  const [courses, setCourses] = useState<Awaited<ReturnType<typeof listCourses>>['data'] | null>(null)
+  const [courseId, setCourseId] = useState('')
+  const [courseAttendance, setCourseAttendance] = useState<Awaited<ReturnType<typeof fetchCourseAttendance>>['data'] | null>(null)
+  const [courseAttendanceError, setCourseAttendanceError] = useState<string | null>(null)
 
   const programKeys = getProgramKeys()
 
@@ -147,6 +154,23 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
     if (r.error) setLoggedClassesError(r.error)
     else setLoggedClasses(r.data ?? null)
   }, [loggedClassesDate])
+
+  const loadCourses = useCallback(async () => {
+    const r = await listCourses()
+    if (r.data) setCourses(r.data)
+  }, [])
+
+  const loadCourseAttendance = useCallback(async () => {
+    if (!courseId) {
+      setCourseAttendance(null)
+      setCourseAttendanceError(null)
+      return
+    }
+    setCourseAttendanceError(null)
+    const r = await fetchCourseAttendance(courseId)
+    if (r.error) setCourseAttendanceError(r.error)
+    else setCourseAttendance(r.data ?? null)
+  }, [courseId])
 
   const loadAlerts = useCallback(async () => {
     setAlertsError(null)
@@ -209,6 +233,13 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
   useEffect(() => {
     if (activeTab === 'Logged classes') loadLoggedClasses()
   }, [activeTab, loggedClassesDate, loadLoggedClasses])
+  useEffect(() => {
+    if (activeTab === 'Course') loadCourses()
+  }, [activeTab, loadCourses])
+  useEffect(() => {
+    if (activeTab === 'Course' && courseId) loadCourseAttendance()
+    else if (!courseId) setCourseAttendance(null)
+  }, [activeTab, courseId, loadCourseAttendance])
   useEffect(() => {
     if (activeTab === 'Weekly') {
       loadWeekly()
@@ -277,6 +308,15 @@ export function AnalyticsClient({ initialRange, initialTab, initialView }: Props
             totalByProgram={totalByProgram ?? null}
             totalByProgramError={totalByProgramError ?? undefined}
             error={weeklyError ?? undefined}
+          />
+        )}
+        {activeTab === 'Course' && (
+          <CourseSection
+            courses={courses ?? []}
+            selectedCourseId={courseId}
+            onCourseChange={setCourseId}
+            data={courseAttendance ?? null}
+            error={courseAttendanceError ?? undefined}
           />
         )}
         {activeTab === 'Slots' && (

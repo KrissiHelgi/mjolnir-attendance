@@ -17,6 +17,7 @@ export async function Navigation() {
   }
   if (profile?.role === 'admin') {
     links.push({ href: '/admin/schedule', label: 'Schedule' })
+    links.push({ href: '/admin/courses', label: 'Courses' })
     links.push({ href: '/admin/analytics', label: 'Analytics' })
   }
   if (superAdmin) {

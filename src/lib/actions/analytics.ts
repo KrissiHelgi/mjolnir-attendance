@@ -19,6 +19,7 @@ import {
   getOverCapacityLogs,
   getCancelledLogs,
   getLoggedClassesForDate,
+  getCourseAttendance,
   type DateRange,
 } from '@/lib/analytics'
 import { logAttendance } from '@/lib/actions/attendance'
@@ -352,6 +353,11 @@ export async function fetchCancelledLogs(range: DateRange) {
 export async function fetchLoggedClassesForDate(localDate: string) {
   await requireAdmin()
   return getLoggedClassesForDate(localDate)
+}
+
+export async function fetchCourseAttendance(courseId: string) {
+  await requireAdmin()
+  return getCourseAttendance(courseId)
 }
 
 /** Remove one attendance log (e.g. mistaken headcount). Admin only. That class will no longer count in analytics. */

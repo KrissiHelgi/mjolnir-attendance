@@ -53,12 +53,24 @@ create table public.program_thresholds (
   updated_at timestamptz default now() not null
 );
 
--- Class occurrences: one per (template, local_date); starts_at required for 1h lock
+-- Courses: time-bounded groups of sessions (e.g. 4–8 week course)
+create table public.courses (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  program text,
+  start_date date not null,
+  end_date date not null,
+  created_at timestamptz default now() not null,
+  constraint courses_dates check (end_date >= start_date)
+);
+
+-- Class occurrences: one per (template, local_date); starts_at required for 1h lock; optional course_id
 create table public.class_occurrences (
   id uuid default uuid_generate_v4() primary key,
   class_template_id uuid references public.class_templates(id) on delete cascade not null,
   local_date date not null,
   starts_at timestamptz not null,
+  course_id uuid references public.courses(id) on delete set null,
   unique(class_template_id, local_date)
 );
 
@@ -82,6 +94,7 @@ alter table public.class_templates enable row level security;
 alter table public.class_occurrences enable row level security;
 alter table public.attendance_logs enable row level security;
 alter table public.program_thresholds enable row level security;
+alter table public.courses enable row level security;
 alter table public.app_settings enable row level security;
 alter table public.access_requests enable row level security;
 
@@ -149,6 +162,12 @@ create policy "Admins can update program_thresholds"
 create policy "Admins can delete program_thresholds"
   on public.program_thresholds for delete using (public.is_admin());
 
+-- Courses: authenticated read; admin write
+create policy "Authenticated users can read courses"
+  on public.courses for select to authenticated using (true);
+create policy "Admins can manage courses"
+  on public.courses for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
 -- App settings: authenticated read; admin write
 create policy "Authenticated users can read app_settings"
   on public.app_settings for select to authenticated using (true);
@@ -179,6 +198,11 @@ create policy "Admins can delete occurrences"
   on public.class_occurrences for delete
   to authenticated
   using (public.is_admin());
+
+create policy "Admins can update occurrences"
+  on public.class_occurrences for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Attendance: authenticated read; admin or coach (for that program) can insert/update
 create policy "Authenticated users can read attendance"
