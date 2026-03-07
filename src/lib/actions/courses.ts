@@ -116,7 +116,7 @@ export async function addSessionsToCourse(
 
   const { data: templates, error: tplErr } = await supabase
     .from('class_templates')
-    .select('id, start_time')
+    .select('id, start_time, weekday')
     .in('id', templateIds)
   if (tplErr || !templates?.length) return { error: 'Could not load templates' }
 
@@ -124,11 +124,13 @@ export async function addSessionsToCourse(
   const end = new Date((course as { end_date: string }).end_date + 'T12:00:00Z')
   let added = 0
   for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const dayOfWeek = d.getUTCDay() // 0 = Sun, 1 = Mon, ... 6 = Sat
     const y = d.getUTCFullYear()
     const m = String(d.getUTCMonth() + 1).padStart(2, '0')
     const day = String(d.getUTCDate()).padStart(2, '0')
     const localDate = `${y}-${m}-${day}`
-    for (const t of templates as { id: string; start_time: string }[]) {
+    for (const t of templates as { id: string; start_time: string; weekday: number }[]) {
+      if (t.weekday !== dayOfWeek) continue // only add sessions on the template's weekday (e.g. Tuesdays only)
       const st = String(t.start_time).slice(0, 5)
       const result = await getOrCreateOccurrence(t.id, localDate, st)
       if (result.error) continue
