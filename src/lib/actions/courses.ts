@@ -195,7 +195,7 @@ export async function listCourseSessions(courseId: string): Promise<{
   return { data: rows }
 }
 
-/** List class_templates for the "Add sessions" picker (live only). */
+/** List class_templates for the "Add sessions" picker (live only). Deduplicated by (weekday, start_time, program, title) so the same logical slot does not appear twice and cause duplicate sessions. */
 export async function listTemplatesForCoursePicker(): Promise<{
   data?: { id: string; program: string; title: string; weekday: number; start_time: string }[]
   error?: string
@@ -209,7 +209,15 @@ export async function listTemplatesForCoursePicker(): Promise<{
     .order('weekday')
     .order('start_time')
   if (error) return { error: error.message }
-  return { data: data ?? [] }
+  const list = (data ?? []) as { id: string; program: string; title: string; weekday: number; start_time: string }[]
+  const seen = new Set<string>()
+  const deduped = list.filter((t) => {
+    const key = `${t.weekday}|${String(t.start_time).slice(0, 5)}|${t.program}|${t.title}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  return { data: deduped }
 }
 
 /** Remove course from an occurrence (set course_id to null). */
