@@ -1059,7 +1059,7 @@ export async function getCourseAttendance(courseId: string): Promise<{
 
   const { data: occs, error: occErr } = await supabase
     .from('class_occurrences')
-    .select('id, local_date')
+    .select('id, local_date, class_templates!inner(title, start_time)')
     .eq('course_id', courseId)
     .order('local_date')
 
@@ -1092,7 +1092,8 @@ export async function getCourseAttendance(courseId: string): Promise<{
   const startMs = new Date(startDate + 'T12:00:00Z').getTime()
   const byWeek = new Map<number, { totalHeadcount: number; sessionCount: number; loggedCount: number }>()
 
-  occs.forEach((o: { id: string; local_date: string }) => {
+  type OccRow = { id: string; local_date: string; class_templates: { title: string; start_time: string } | { title: string; start_time: string }[] }
+  ;(occs as OccRow[]).forEach((o) => {
     const dateMs = new Date(o.local_date + 'T12:00:00Z').getTime()
     const weekNumber = Math.floor((dateMs - startMs) / (7 * 24 * 60 * 60 * 1000)) + 1
     if (!byWeek.has(weekNumber)) byWeek.set(weekNumber, { totalHeadcount: 0, sessionCount: 0, loggedCount: 0 })
@@ -1117,14 +1118,20 @@ export async function getCourseAttendance(courseId: string): Promise<{
   })
   byWeekSorted.sort((a, b) => a.weekNumber - b.weekNumber)
 
-  const bySession: CourseAttendanceSessionRow[] = (occs as { id: string; local_date: string }[])
+  const bySession: CourseAttendanceSessionRow[] = (occs as OccRow[])
     .sort((a, b) => a.local_date.localeCompare(b.local_date))
-    .map((o, i) => ({
-      sessionIndex: i + 1,
-      sessionLabel: `Session ${i + 1}`,
-      date: o.local_date,
-      headcount: logByOcc.get(o.id) ?? 0,
-    }))
+    .map((o, i) => {
+      const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
+      const title = t?.title ?? 'Class'
+      const time = t?.start_time ? String(t.start_time).slice(0, 5) : ''
+      const sessionLabel = time ? `${title} ${time} ${o.local_date}` : `${title} ${o.local_date}`
+      return {
+        sessionIndex: i + 1,
+        sessionLabel,
+        date: o.local_date,
+        headcount: logByOcc.get(o.id) ?? 0,
+      }
+    })
 
   return {
     data: {
