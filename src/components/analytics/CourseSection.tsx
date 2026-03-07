@@ -1,5 +1,14 @@
 'use client'
 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import type { CourseAttendanceResult } from '@/lib/analytics'
 
 type Props = {
@@ -24,7 +33,7 @@ export function CourseSection({
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
-        View attendance progress by week for a course. Create and add sessions under Admin → Courses.
+        View attendance for each class in the course. Create and add sessions under Admin → Courses.
       </p>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
@@ -42,37 +51,47 @@ export function CourseSection({
         </select>
       </div>
       {!selectedCourseId ? (
-        <p className="text-gray-500 text-sm">Select a course to see attendance by week.</p>
+        <p className="text-gray-500 text-sm">Select a course to see attendance.</p>
       ) : !data ? (
         <p className="text-gray-500 text-sm">Loading…</p>
-      ) : data.byWeek.length === 0 ? (
+      ) : !data.bySession?.length ? (
         <p className="text-gray-500 text-sm">No sessions in this course yet. Add sessions in Admin → Courses.</p>
       ) : (
         <>
           <p className="text-sm font-medium text-gray-800">
             {data.courseName} — {data.startDate} to {data.endDate}
           </p>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-600">
-                  <th className="py-2 pr-4 font-medium">Week</th>
-                  <th className="py-2 pr-4 font-medium text-right">Sessions</th>
-                  <th className="py-2 pr-4 font-medium text-right">Logged</th>
-                  <th className="py-2 font-medium text-right">Total attendance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.byWeek.map((row) => (
-                  <tr key={row.weekNumber} className="border-b border-gray-100">
-                    <td className="py-2 pr-4 text-gray-900">{row.weekLabel}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums">{row.sessionCount}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums">{row.loggedCount}</td>
-                    <td className="py-2 text-right tabular-nums font-medium">{row.totalHeadcount.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data.bySession}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="sessionLabel"
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip
+                  labelStyle={{ color: '#111' }}
+                  formatter={(value: number) => [value, 'Attendance']}
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload as { sessionLabel: string; date: string } | undefined
+                    return p ? `${p.sessionLabel} (${p.date})` : ''
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="headcount"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  dot={{ r: 6, fill: '#2563eb', strokeWidth: 0 }}
+                  name="Attendance"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </>
       )}

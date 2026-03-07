@@ -1023,12 +1023,20 @@ export type CourseAttendanceWeekRow = {
   loggedCount: number
 }
 
+export type CourseAttendanceSessionRow = {
+  sessionIndex: number
+  sessionLabel: string
+  date: string
+  headcount: number
+}
+
 export type CourseAttendanceResult = {
   courseId: string
   courseName: string
   startDate: string
   endDate: string
   byWeek: CourseAttendanceWeekRow[]
+  bySession: CourseAttendanceSessionRow[]
 }
 
 /** Attendance for a course, grouped by week of course (week 1, 2, …). Excludes cancelled. */
@@ -1064,6 +1072,7 @@ export async function getCourseAttendance(courseId: string): Promise<{
         startDate,
         endDate,
         byWeek: [],
+        bySession: [],
       },
     }
   }
@@ -1108,6 +1117,15 @@ export async function getCourseAttendance(courseId: string): Promise<{
   })
   byWeekSorted.sort((a, b) => a.weekNumber - b.weekNumber)
 
+  const bySession: CourseAttendanceSessionRow[] = (occs as { id: string; local_date: string }[])
+    .sort((a, b) => a.local_date.localeCompare(b.local_date))
+    .map((o, i) => ({
+      sessionIndex: i + 1,
+      sessionLabel: `Session ${i + 1}`,
+      date: o.local_date,
+      headcount: logByOcc.get(o.id) ?? 0,
+    }))
+
   return {
     data: {
       courseId,
@@ -1115,6 +1133,7 @@ export async function getCourseAttendance(courseId: string): Promise<{
       startDate,
       endDate,
       byWeek: byWeekSorted,
+      bySession,
     },
   }
 }
