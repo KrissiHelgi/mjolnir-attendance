@@ -12,6 +12,7 @@ import {
   listCourseSessions,
   listTemplatesForCoursePicker,
   removeOccurrenceFromCourse,
+  removeOccurrencesFromCourse,
   type Course,
   type CourseSessionRow,
 } from '@/lib/actions/courses'
@@ -42,6 +43,8 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
   const [editError, setEditError] = useState<string | null>(null)
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set())
+  const [bulkRemoveLoading, setBulkRemoveLoading] = useState(false)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -67,6 +70,7 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
   }
 
   async function toggleSessions(courseId: string) {
+    setSelectedSessionIds(new Set())
     if (expandedId === courseId) {
       setExpandedId(null)
       return
@@ -113,6 +117,34 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
       const r2 = await listCourseSessions(expandedId)
       if (r2.data) setSessions(r2.data)
     }
+    router.refresh()
+  }
+
+  function toggleSessionSelection(id: string) {
+    setSelectedSessionIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSessionSelectionAll() {
+    if (sessions.length === 0) return
+    const allSelected = sessions.every((s) => selectedSessionIds.has(s.id))
+    setSelectedSessionIds(allSelected ? new Set() : new Set(sessions.map((s) => s.id)))
+  }
+
+  async function handleBulkRemoveFromCourse() {
+    if (selectedSessionIds.size === 0) return
+    setBulkRemoveLoading(true)
+    const r = await removeOccurrencesFromCourse(Array.from(selectedSessionIds))
+    setBulkRemoveLoading(false)
+    if (!r.error && expandedId) {
+      const r2 = await listCourseSessions(expandedId)
+      if (r2.data) setSessions(r2.data)
+    }
+    setSelectedSessionIds(new Set())
     router.refresh()
   }
 
@@ -292,37 +324,77 @@ export function CoursesClient({ initialCourses }: { initialCourses: Course[] }) 
                     ) : sessions.length === 0 ? (
                       <p className="text-sm text-gray-500">No sessions in this course. Use &quot;Add sessions&quot; to add classes from your weekly schedule (creates occurrences for each date in the course range).</p>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-200 text-left text-gray-600">
-                              <th className="py-2 pr-4">Date</th>
-                              <th className="py-2 pr-4">Time</th>
-                              <th className="py-2 pr-4">Program</th>
-                              <th className="py-2 pr-4">Title</th>
-                              <th className="py-2 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sessions.map((s) => (
-                              <tr key={s.id} className="border-b border-gray-100">
-                                <td className="py-2 pr-4">{s.local_date}</td>
-                                <td className="py-2 pr-4">{s.start_time}</td>
-                                <td className="py-2 pr-4">{getProgramLabel(s.program)}</td>
-                                <td className="py-2 pr-4">{s.title}</td>
-                                <td className="py-2 text-right">
+                      <div className="space-y-3">
+                        {selectedSessionIds.size > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+                            <span className="font-medium text-red-900">{selectedSessionIds.size} selected</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSessionIds(new Set())}
+                              className="text-red-800 underline hover:no-underline"
+                            >
+                              Clear selection
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleBulkRemoveFromCourse}
+                              disabled={bulkRemoveLoading}
+                              className="min-h-[36px] px-3 py-1.5 rounded-lg bg-red-200 text-red-900 text-sm font-medium hover:bg-red-300 disabled:opacity-50"
+                            >
+                              {bulkRemoveLoading ? 'Removing…' : 'Remove selected from course'}
+                            </button>
+                          </div>
+                        )}
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-left text-gray-600">
+                                <th className="w-10 py-2 pr-2">
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveFromCourse(s.id)}
-                                    className="text-red-600 hover:text-red-800 text-xs"
+                                    onClick={toggleSessionSelectionAll}
+                                    className="text-xs font-medium underline hover:no-underline"
                                   >
-                                    Remove from course
+                                    {sessions.every((s) => selectedSessionIds.has(s.id)) ? 'Deselect all' : 'Select all'}
                                   </button>
-                                </td>
+                                </th>
+                                <th className="py-2 pr-4">Date</th>
+                                <th className="py-2 pr-4">Time</th>
+                                <th className="py-2 pr-4">Program</th>
+                                <th className="py-2 pr-4">Title</th>
+                                <th className="py-2 text-right">Actions</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {sessions.map((s) => (
+                                <tr key={s.id} className="border-b border-gray-100">
+                                  <td className="py-2 pr-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSessionIds.has(s.id)}
+                                      onChange={() => toggleSessionSelection(s.id)}
+                                      className="rounded border-gray-300"
+                                      aria-label={`Select ${s.title} ${s.local_date}`}
+                                    />
+                                  </td>
+                                  <td className="py-2 pr-4">{s.local_date}</td>
+                                  <td className="py-2 pr-4">{s.start_time}</td>
+                                  <td className="py-2 pr-4">{getProgramLabel(s.program)}</td>
+                                  <td className="py-2 pr-4">{s.title}</td>
+                                  <td className="py-2 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveFromCourse(s.id)}
+                                      className="text-red-600 hover:text-red-800 text-xs"
+                                    >
+                                      Remove from course
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>

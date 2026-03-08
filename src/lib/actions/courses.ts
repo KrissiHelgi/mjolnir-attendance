@@ -235,3 +235,18 @@ export async function removeOccurrenceFromCourse(occurrenceId: string): Promise<
   revalidatePath('/admin/analytics')
   return {}
 }
+
+/** Remove course from multiple occurrences. Admin only. */
+export async function removeOccurrencesFromCourse(occurrenceIds: string[]): Promise<{ error?: string }> {
+  await requireAdmin()
+  if (!occurrenceIds.length) return {}
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('class_occurrences')
+    .update({ course_id: null })
+    .in('id', occurrenceIds)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/courses')
+  revalidatePath('/admin/analytics')
+  return {}
+}
