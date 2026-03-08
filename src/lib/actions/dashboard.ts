@@ -22,6 +22,23 @@ export async function deleteOccurrence(occurrenceId: string): Promise<{ error?: 
   return {}
 }
 
+/** Delete multiple class occurrences. Admin only. */
+export async function deleteOccurrences(occurrenceIds: string[]): Promise<{ error?: string }> {
+  const profile = await getCurrentProfile()
+  if (!profile || profile.role !== 'admin') return { error: 'Unauthorized' }
+  if (!occurrenceIds.length) return {}
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('class_occurrences')
+    .delete()
+    .in('id', occurrenceIds)
+
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  return {}
+}
+
 /**
  * Get or create a class_occurrence for (template_id, local_date).
  * starts_at is required; pass startTime (HH:MM or HH:MM:SS).

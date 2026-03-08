@@ -399,3 +399,35 @@ export async function markMissingAsCancelled(occurrenceId: string): Promise<{ er
   if ('error' in result) return { error: result.error }
   return {}
 }
+
+/** Mark multiple missing as "No one showed up". Admin only. Returns count applied or first error. */
+export async function markMissingAsNaBulk(occurrenceIds: string[]): Promise<{ error?: string; count?: number }> {
+  await requireAdmin()
+  let count = 0
+  for (const id of occurrenceIds) {
+    const result = await logAttendance(id, 0, {
+      notes: 'N/A (admin) - no one showed up',
+      adminOverride: true,
+      naReason: 'no_show',
+    })
+    if ('error' in result) return { error: result.error }
+    count++
+  }
+  return { count }
+}
+
+/** Mark multiple missing as "Class cancelled". Admin only. Returns count applied or first error. */
+export async function markMissingAsCancelledBulk(occurrenceIds: string[]): Promise<{ error?: string; count?: number }> {
+  await requireAdmin()
+  let count = 0
+  for (const id of occurrenceIds) {
+    const result = await logAttendance(id, 0, {
+      notes: 'N/A (admin) - class cancelled',
+      adminOverride: true,
+      naReason: 'cancelled',
+    })
+    if ('error' in result) return { error: result.error }
+    count++
+  }
+  return { count }
+}

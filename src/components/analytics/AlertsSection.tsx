@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow, CancelledLogRow } from '@/lib/analytics'
 import type { MissingLog } from '@/lib/analytics'
 import type { ThresholdRow } from '@/lib/actions/analytics'
-import { getThresholds, updateThreshold, markMissingAsNa, markMissingAsCancelled } from '@/lib/actions/analytics'
-import { deleteOccurrence } from '@/lib/actions/dashboard'
+import { getThresholds, updateThreshold, markMissingAsNa, markMissingAsCancelled, markMissingAsNaBulk, markMissingAsCancelledBulk } from '@/lib/actions/analytics'
+import { deleteOccurrence, deleteOccurrences } from '@/lib/actions/dashboard'
 import { formatLocalDateLabel } from '@/lib/dates'
 
 type Props = {
@@ -26,8 +26,9 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [expandedSlotId, setExpandedSlotId] = useState<string | null>(null)
   const [markingNa, setMarkingNa] = useState<string | null>(null)
-  const [naModalOccurrenceId, setNaModalOccurrenceId] = useState<string | null>(null)
+  const [naModalOccurrenceIds, setNaModalOccurrenceIds] = useState<string[]>([])
   const [naActionLoading, setNaActionLoading] = useState(false)
+  const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getThresholds().then((r) => {
@@ -66,27 +67,68 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
   }
 
   function openMarkAsNaModal(occurrenceId: string) {
-    setNaModalOccurrenceId(occurrenceId)
+    setNaModalOccurrenceIds([occurrenceId])
+  }
+
+  function openBulkMarkAsNaModal() {
+    if (selectedMissingIds.size === 0) return
+    setNaModalOccurrenceIds(Array.from(selectedMissingIds))
+  }
+
+  function toggleMissingSelection(id: string) {
+    setSelectedMissingIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleMissingSelectionDay(items: MissingLog[]) {
+    const ids = items.map((m) => m.occurrenceId)
+    const allSelected = ids.every((id) => selectedMissingIds.has(id))
+    setSelectedMissingIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => (allSelected ? next.delete(id) : next.add(id)))
+      return next
+    })
   }
 
   async function handleNaChoice(choice: 'no_show' | 'not_running' | 'cancelled') {
-    if (!naModalOccurrenceId) return
+    const ids = naModalOccurrenceIds
+    if (!ids.length) return
     setNaActionLoading(true)
-    setMarkingNa(naModalOccurrenceId)
-    let r: { error?: string }
+    if (ids.length === 1) setMarkingNa(ids[0])
+    let r: { error?: string; count?: number }
     if (choice === 'no_show') {
-      r = await markMissingAsNa(naModalOccurrenceId)
-      if (!r.error) showToast('Marked as no one showed up (counted as 0)', 'success')
+      if (ids.length === 1) {
+        r = await markMissingAsNa(ids[0])
+        if (!r.error) showToast('Marked as no one showed up (counted as 0)', 'success')
+      } else {
+        r = await markMissingAsNaBulk(ids)
+        if (!r.error) showToast(`${r.count} marked as no one showed up (counted as 0)`, 'success')
+      }
     } else if (choice === 'not_running') {
-      r = await deleteOccurrence(naModalOccurrenceId)
-      if (!r.error) showToast('Removed from schedule (not counted)', 'success')
+      if (ids.length === 1) {
+        r = await deleteOccurrence(ids[0])
+        if (!r.error) showToast('Removed from schedule (not counted)', 'success')
+      } else {
+        r = await deleteOccurrences(ids)
+        if (!r.error) showToast(`${ids.length} removed from schedule (not counted)`, 'success')
+      }
     } else {
-      r = await markMissingAsCancelled(naModalOccurrenceId)
-      if (!r.error) showToast('Marked as cancelled (shown in Classes cancelled)', 'success')
+      if (ids.length === 1) {
+        r = await markMissingAsCancelled(ids[0])
+        if (!r.error) showToast('Marked as cancelled (shown in Classes cancelled)', 'success')
+      } else {
+        r = await markMissingAsCancelledBulk(ids)
+        if (!r.error) showToast(`${r.count} marked as cancelled (shown in Classes cancelled)`, 'success')
+      }
     }
     setNaActionLoading(false)
     setMarkingNa(null)
-    setNaModalOccurrenceId(null)
+    setNaModalOccurrenceIds([])
+    setSelectedMissingIds(new Set())
     if (r?.error) showToast(r.error, 'error')
     else onMissingMarked?.()
   }
@@ -354,17 +396,46 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
       {missingLogs != null && (
         <div id="alerts-missing">
           <h3 className="text-sm font-semibold text-gray-800 mb-2">Missing logs</h3>
-          <p className="text-xs text-gray-500 mb-2">Past occurrences (or today after lock) with no attendance. Grouped by day, newest first.</p>
+          <p className="text-xs text-gray-500 mb-2">Past occurrences (or today after lock) with no attendance. Grouped by day, newest first. Select multiple to mark in bulk.</p>
           {!missingLogs.length ? (
             <p className="text-gray-500 text-sm">None.</p>
           ) : (
             <div className="space-y-4">
+              {selectedMissingIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                  <span className="font-medium text-amber-900">{selectedMissingIds.size} selected</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMissingIds(new Set())}
+                    className="text-amber-800 underline hover:no-underline"
+                  >
+                    Clear selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openBulkMarkAsNaModal}
+                    className="min-h-[36px] px-3 py-1.5 rounded-lg bg-amber-200 text-amber-900 text-sm font-medium hover:bg-amber-300"
+                  >
+                    Mark selected as N/A
+                  </button>
+                </div>
+              )}
               {missingByDay.map(({ date, items }) => (
                 <div key={date} className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800">{formatLocalDateLabel(date)}</div>
+                  <div className="bg-gray-100 px-3 py-2 text-sm font-medium text-gray-800 flex items-center gap-2">
+                    {formatLocalDateLabel(date)}
+                    <button
+                      type="button"
+                      onClick={() => toggleMissingSelectionDay(items)}
+                      className="text-xs text-gray-600 underline hover:no-underline"
+                    >
+                      {items.every((m) => selectedMissingIds.has(m.occurrenceId)) ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="w-10 py-2 px-2 text-left font-medium text-gray-700">Select</th>
                         <th className="text-left py-2 px-2 font-medium text-gray-700">Time</th>
                         <th className="text-left py-2 px-2 font-medium text-gray-700">Program</th>
                         <th className="text-left py-2 px-2 font-medium text-gray-700">Title</th>
@@ -374,6 +445,15 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
                     <tbody>
                       {items.map((m) => (
                         <tr key={m.occurrenceId} className="border-b border-gray-100 last:border-0">
+                          <td className="py-2 px-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedMissingIds.has(m.occurrenceId)}
+                              onChange={() => toggleMissingSelection(m.occurrenceId)}
+                              className="rounded border-gray-300"
+                              aria-label={`Select ${m.title} ${m.time}`}
+                            />
+                          </td>
                           <td className="py-2 px-2">{m.time}</td>
                           <td className="py-2 px-2">{m.programLabel}</td>
                           <td className="py-2 px-2 text-gray-600">{m.title}</td>
@@ -398,11 +478,15 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
         </div>
       )}
 
-      {naModalOccurrenceId && (
+      {naModalOccurrenceIds.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Mark as N/A</h3>
-            <p className="text-sm text-gray-600 mb-4">How should this missing class be handled?</p>
+            <p className="text-sm text-gray-600 mb-4">
+              {naModalOccurrenceIds.length === 1
+                ? 'How should this missing class be handled?'
+                : `How should these ${naModalOccurrenceIds.length} missing classes be handled?`}
+            </p>
             <div className="space-y-2">
               <button
                 type="button"
@@ -431,7 +515,7 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
             </div>
             <button
               type="button"
-              onClick={() => { if (!naActionLoading) setNaModalOccurrenceId(null) }}
+              onClick={() => { if (!naActionLoading) setNaModalOccurrenceIds([]) }}
               disabled={naActionLoading}
               className="mt-4 w-full min-h-[44px] px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
             >
