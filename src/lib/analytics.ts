@@ -522,7 +522,7 @@ export async function getCapacityUtilization(
         occurrenceCount: v.util.length,
       })
     })
-    data.sort((a, b) => (a.program ?? '').localeCompare(b.program ?? ''))
+    data.sort((a, b) => b.avgUtilization - a.avgUtilization)
   } else {
     const slotLabels = new Map<string, string>()
     occs.forEach((o: OccRow) => {
@@ -539,7 +539,7 @@ export async function getCapacityUtilization(
         occurrenceCount: v.util.length,
       })
     })
-    data.sort((a, b) => (a.slotLabel ?? '').localeCompare(b.slotLabel ?? ''))
+    data.sort((a, b) => b.avgUtilization - a.avgUtilization)
   }
 
   return { data, capacityMissingCount }
