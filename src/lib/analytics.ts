@@ -465,7 +465,7 @@ export async function getCapacityUtilization(
       id,
       local_date,
       class_template_id,
-      class_templates!inner(program, capacity, start_time)
+      class_templates!inner(program, capacity, start_time, weekday)
     `)
     .gte('local_date', range.startDate)
     .lte('local_date', range.endDate)
@@ -488,7 +488,7 @@ export async function getCapacityUtilization(
   type OccRow = {
     id: string
     class_template_id: string
-    class_templates: { program: string; capacity: number | null; start_time: string } | { program: string; capacity: number | null; start_time: string }[]
+    class_templates: { program: string; capacity: number | null; start_time: string; weekday: number } | { program: string; capacity: number | null; start_time: string; weekday: number }[]
   }
 
   let capacityMissingCount = 0
@@ -522,13 +522,14 @@ export async function getCapacityUtilization(
         occurrenceCount: v.util.length,
       })
     })
-    data.sort((a, b) => (a.program ?? '').localeCompare(b.program ?? ''))
+    data.sort((a, b) => b.avgUtilization - a.avgUtilization)
   } else {
     const slotLabels = new Map<string, string>()
     occs.forEach((o: OccRow) => {
       const t = Array.isArray(o.class_templates) ? o.class_templates[0] : o.class_templates
       if (!t || slotLabels.has(o.class_template_id)) return
-      slotLabels.set(o.class_template_id, `${getProgramLabel(t.program)} ${String(t.start_time).slice(0, 5)}`)
+      const w = typeof t.weekday === 'number' ? t.weekday : 0
+      slotLabels.set(o.class_template_id, `${getProgramLabel(t.program)} ${String(t.start_time).slice(0, 5)} - ${getWeekdayLabel(w)}`)
     })
     buckets.forEach((v, slotId) => {
       const avg = v.util.reduce((a, b) => a + b, 0) / v.util.length
@@ -539,7 +540,7 @@ export async function getCapacityUtilization(
         occurrenceCount: v.util.length,
       })
     })
-    data.sort((a, b) => (a.slotLabel ?? '').localeCompare(b.slotLabel ?? ''))
+    data.sort((a, b) => b.avgUtilization - a.avgUtilization)
   }
 
   return { data, capacityMissingCount }
