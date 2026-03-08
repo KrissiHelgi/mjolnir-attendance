@@ -5,6 +5,7 @@ import type { LowAttendanceAlert, SlotLowCount, OverCapacityRow, CancelledLogRow
 import type { MissingLog } from '@/lib/analytics'
 import type { ThresholdRow } from '@/lib/actions/analytics'
 import { getThresholds, updateThreshold, markMissingAsNa, markMissingAsCancelled, markMissingAsNaBulk, markMissingAsCancelledBulk } from '@/lib/actions/analytics'
+import { logAttendance } from '@/lib/actions/attendance'
 import { deleteOccurrence, deleteOccurrences } from '@/lib/actions/dashboard'
 import { formatLocalDateLabel } from '@/lib/dates'
 
@@ -29,6 +30,9 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
   const [naModalOccurrenceIds, setNaModalOccurrenceIds] = useState<string[]>([])
   const [naActionLoading, setNaActionLoading] = useState(false)
   const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
+  const [logModalItem, setLogModalItem] = useState<MissingLog | null>(null)
+  const [logHeadcount, setLogHeadcount] = useState(0)
+  const [logSaving, setLogSaving] = useState(false)
 
   useEffect(() => {
     getThresholds().then((r) => {
@@ -64,6 +68,26 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
     )
     setEditing(null)
     showToast('Threshold saved', 'success')
+  }
+
+  function openLogModal(m: MissingLog) {
+    setLogModalItem(m)
+    setLogHeadcount(0)
+  }
+
+  async function handleLogAttendanceSubmit() {
+    if (!logModalItem) return
+    const value = Math.max(0, Math.floor(logHeadcount))
+    setLogSaving(true)
+    const result = await logAttendance(logModalItem.occurrenceId, value, { adminOverride: true })
+    setLogSaving(false)
+    if ('error' in result) {
+      showToast(result.error ?? 'Failed to log attendance', 'error')
+      return
+    }
+    showToast(`Attendance logged: ${value}`, 'success')
+    setLogModalItem(null)
+    onMissingMarked?.()
   }
 
   function openMarkAsNaModal(occurrenceId: string) {
@@ -458,14 +482,23 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
                           <td className="py-2 px-2">{m.programLabel}</td>
                           <td className="py-2 px-2 text-gray-600">{m.title}</td>
                           <td className="py-2 px-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() => openMarkAsNaModal(m.occurrenceId)}
-                              disabled={markingNa === m.occurrenceId}
-                              className="min-h-[44px] px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-sm font-medium hover:bg-amber-200 disabled:opacity-50"
-                            >
-                              {markingNa === m.occurrenceId ? 'Saving…' : 'Mark as N/A'}
-                            </button>
+                            <div className="flex flex-wrap gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => openLogModal(m)}
+                                className="min-h-[44px] px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                              >
+                                Log attendance
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openMarkAsNaModal(m.occurrenceId)}
+                                disabled={markingNa === m.occurrenceId}
+                                className="min-h-[44px] px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-sm font-medium hover:bg-amber-200 disabled:opacity-50"
+                              >
+                                {markingNa === m.occurrenceId ? 'Saving…' : 'Mark as N/A'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -475,6 +508,47 @@ export function AlertsSection({ alerts, slotsWithRepeated, missingLogs, overCapa
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {logModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Log attendance</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {logModalItem.title} — {formatLocalDateLabel(logModalItem.date)} {logModalItem.time}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Headcount</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={logHeadcount}
+                onChange={(e) => setLogHeadcount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleLogAttendanceSubmit}
+                disabled={logSaving}
+                className="flex-1 min-h-[44px] px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {logSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!logSaving) setLogModalItem(null) }}
+                disabled={logSaving}
+                className="flex-1 min-h-[44px] px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
